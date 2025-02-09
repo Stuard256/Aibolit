@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Карточка животного{% endblock %}
+{% block content %}
+  <h2>Карточка животного</h2>
+  <form method="post">
+    <div class="mb-3">
+      <label for="name" class="form-label">Кличка</label>
+      <input type="text" class="form-control" name="name" id="name" value="{{ pet.name }}" required>
+    </div>
+    <div class="mb-3">
+      <label for="card_number" class="form-label">Номер карточки</label>
+      <input type="text" class="form-control" name="card_number" id="card_number" value="{{ pet.card_number }}" required>
+    </div>
+    <div class="mb-3">
+      <label for="species" class="form-label">Вид животного</label>
+      <input list="species_list" class="form-control" name="species" id="species" value="{{ pet.species }}" required>
+      <datalist id="species_list">
+        <option value="собака">
+        <option value="кот">
+        <option value="кролик">
+        <option value="хорёк">
+        <option value="крыса">
+      </datalist>
+    </div>
+    <div class="mb-3">
+      <label for="gender" class="form-label">Пол</label>
+      <select name="gender" id="gender" class="form-select" required>
+        <option value="М" {% if pet.gender == "М" %}selected{% endif %}>М</option>
+        <option value="Ж" {% if pet.gender == "Ж" %}selected{% endif %}>Ж</option>
+        <option value="кастрат М" {% if pet.gender == "кастрат М" %}selected{% endif %}>кастрат М</option>
+        <option value="кастрат Ж" {% if pet.gender == "кастрат Ж" %}selected{% endif %}>кастрат Ж</option>
+      </select>
+    </div>
+    <div class="mb-3">
+      <label for="breed" class="form-label">Порода</label>
+      <input type="text" class="form-control" name="breed" id="breed" value="{{ pet.breed }}" required>
+    </div>
+    <div class="mb-3">
+      <label for="coloration" class="form-label">Окрас</label>
+      <input type="text" class="form-control" name="coloration" id="coloration" value="{{ pet.coloration }}">
+    </div>
+    <div class="mb-3">
+      <label for="birth_date" class="form-label">Дата рождения (ДД-MM-ГГГГ)</label>
+      <input type="text" class="form-control" name="birth_date" id="birth_date" value="{{ pet.birth_date.strftime('%d-%m-%Y') }}" required>
+    </div>
+    <div class="mb-3">
+      <label for="chronic_diseases" class="form-label">Хронические заболевания</label>
+      <textarea class="form-control" name="chronic_diseases" id="chronic_diseases">{{ pet.chronic_diseases }}</textarea>
+    </div>
+    <div class="mb-3">
+      <label for="allergies" class="form-label">Аллергии</label>
+      <textarea class="form-control" name="allergies" id="allergies">{{ pet.allergies }}</textarea>
+    </div>
+    <button type="submit" class="btn btn-primary">Сохранить изменения</button>
+  </form>
+  
+  <p><strong>Владелец:</strong> <a href="{{ url_for('owner_card', owner_id=owner.id) }}">{{ owner.name }}</a></p>
+{% endblock %}

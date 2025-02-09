@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Список животных{% endblock %}
+{% block content %}
+  <h2>Список животных</h2>
+  {% if pets %}
+    <table class="table table-bordered">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Владелец</th>
+          <th>Кличка</th>
+          <th>Номер карточки</th>
+          <th>Вид</th>
+          <th>Пол</th>
+          <th>Порода</th>
+          <th>Окрас</th>
+          <th>Дата рождения</th>
+          <th>Хронические заболевания</th>
+          <th>Аллергии</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for pet in pets %}
+          <tr>
+            <td>{{ pet.id }}</td>
+            <td><a href="{{ url_for('owner_card', owner_id=pet.owner.id) }}">{{ pet.owner.name }}</a></td>
+            <td><a href="{{ url_for('pet_card', pet_id=pet.id) }}">{{ pet.name }}</a></td>
+            <td>{{ pet.card_number }}</td>
+            <td>{{ pet.species }}</td>
+            <td>{{ pet.gender }}</td>
+            <td>{{ pet.breed }}</td>
+            <td>{{ pet.coloration }}</td>
+            <td>{{ pet.birth_date.strftime('%d-%m-%Y') }}</td>
+            <td>{{ pet.chronic_diseases }}</td>
+            <td>{{ pet.allergies }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>Нет животных.</p>
+  {% endif %}
+{% endblock %}

@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Карточка владельца{% endblock %}
+{% block content %}
+  <h2>Карточка владельца</h2>
+  <form method="post">
+    <div class="mb-3">
+      <label for="name" class="form-label">ФИО</label>
+      <input type="text" class="form-control" name="name" id="name" value="{{ owner.name }}" required>
+    </div>
+    <div class="mb-3">
+      <label for="address" class="form-label">Адрес</label>
+      <input type="text" class="form-control" name="address" id="address" value="{{ owner.address }}" required>
+    </div>
+    <div class="mb-3">
+      <label for="phone" class="form-label">Мобильный телефон</label>
+      <input type="text" class="form-control" name="phone" id="phone" value="{{ owner.phone }}" required>
+    </div>
+    <button type="submit" class="btn btn-primary">Сохранить изменения</button>
+  </form>
+  
+  <h3>Животные владельца</h3>
+  {% if owner.pets %}
+    <ul class="list-group">
+      {% for pet in owner.pets %}
+        <li class="list-group-item">
+          <a href="{{ url_for('pet_card', pet_id=pet.id) }}">{{ pet.name }} ({{ pet.card_number }})</a>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p>Нет животных.</p>
+  {% endif %}
+{% endblock %}

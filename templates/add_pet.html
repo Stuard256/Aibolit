@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}Добавить животное{% endblock %}
+{% block content %}
+  <h2>Добавить карточку животного</h2>
+  <form method="post">
+    <div class="mb-3">
+      <label for="owner_id" class="form-label">Выберите владельца</label>
+      <select name="owner_id" id="owner_id" class="form-select" required>
+        <option value="">-- Выберите владельца --</option>
+        {% for owner in owners %}
+          <option value="{{ owner.id }}">{{ owner.name }} (ID: {{ owner.id }})</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="mb-3">
+      <label for="name" class="form-label">Кличка</label>
+      <input type="text" class="form-control" name="name" id="name" required>
+    </div>
+    <div class="mb-3">
+      <label for="card_number" class="form-label">Номер карточки</label>
+      <input type="text" class="form-control" name="card_number" id="card_number" required>
+    </div>
+    <div class="mb-3">
+      <label for="species" class="form-label">Вид животного</label>
+      <input list="species_list" class="form-control" name="species" id="species" required>
+      <datalist id="species_list">
+        <option value="собака">
+        <option value="кот">
+        <option value="кролик">
+        <option value="хорёк">
+        <option value="крыса">
+      </datalist>
+    </div>
+    <div class="mb-3">
+      <label for="gender" class="form-label">Пол</label>
+      <select name="gender" id="gender" class="form-select" required>
+        <option value="М">М</option>
+        <option value="Ж">Ж</option>
+        <option value="кастрат М">кастрат М</option>
+        <option value="кастрат Ж">кастрат Ж</option>
+      </select>
+    </div>
+    <div class="mb-3">
+      <label for="breed" class="form-label">Порода</label>
+      <input type="text" class="form-control" name="breed" id="breed" required>
+    </div>
+    <div class="mb-3">
+      <label for="coloration" class="form-label">Окрас</label>
+      <input type="text" class="form-control" name="coloration" id="coloration">
+    </div>
+    <div class="mb-3">
+      <label for="birth_date" class="form-label">Дата рождения (ДД-MM-ГГГГ)</label>
+      <input type="text" class="form-control" name="birth_date" id="birth_date" placeholder="например, 31-12-2025" required>
+    </div>
+    <div class="mb-3">
+      <label for="chronic_diseases" class="form-label">Хронические заболевания</label>
+      <textarea class="form-control" name="chronic_diseases" id="chronic_diseases"></textarea>
+    </div>
+    <div class="mb-3">
+      <label for="allergies" class="form-label">Аллергии</label>
+      <textarea class="form-control" name="allergies" id="allergies"></textarea>
+    </div>
+    <button type="submit" class="btn btn-primary">Добавить животное</button>
+  </form>
+{% endblock %}

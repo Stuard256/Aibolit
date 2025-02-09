@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Список владельцев{% endblock %}
+{% block content %}
+  <h2>Список владельцев</h2>
+  
+  <form method="get" class="mb-3">
+    <div class="input-group">
+      <input type="text" name="search" class="form-control" placeholder="Поиск по ФИО" value="{{ search_query }}">
+      <button type="submit" class="btn btn-primary">Найти</button>
+      <a href="{{ url_for('owners_list') }}" class="btn btn-secondary">Сбросить</a>
+    </div>
+  </form>
+  
+  {% if owners %}
+    <table class="table table-bordered">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>ФИО</th>
+          <th>Адрес</th>
+          <th>Мобильный телефон</th>
+          <th>Животные</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for owner in owners %}
+          <tr>
+            <td>{{ owner.id }}</td>
+            <td><a href="{{ url_for('owner_card', owner_id=owner.id) }}">{{ owner.name }}</a></td>
+            <td>{{ owner.address }}</td>
+            <td>{{ owner.phone }}</td>
+            <td>
+              {% if owner.pets %}
+                {% for pet in owner.pets %}
+                  <a href="{{ url_for('pet_card', pet_id=pet.id) }}">{{ pet.name }} ({{ pet.card_number }})</a>{% if not loop.last %}, {% endif %}
+                {% endfor %}
+              {% else %}
+                Нет животных
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>Нет владельцев.</p>
+  {% endif %}
+{% endblock %}

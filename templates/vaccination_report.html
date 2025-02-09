@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Отчёт по прививкам{% endblock %}
+{% block content %}
+  <h2>Отчёт по прививкам</h2>
+  {% if report %}
+    <table class="table table-bordered">
+      <thead>
+        <tr>
+          <th>ID питомца</th>
+          <th>Имя питомца</th>
+          <th>Название вакцины</th>
+          <th>Дата прививки</th>
+          <th>Ветеринар</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for record in report %}
+        <tr>
+          <td>{{ record.pet_id }}</td>
+          <td>{{ record.pet_name }}</td>
+          <td>{{ record.vaccine_name }}</td>
+          <td>{{ record.date }}</td>
+          <td>{{ record.veterinarian }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <a href="{{ url_for('download_report') }}" class="btn btn-success">Скачать JSON отчёт</a>
+  {% else %}
+    <p>Нет данных по прививкам для отображения.</p>
+  {% endif %}
+  <br><br>
+  <a href="{{ url_for('index') }}">Вернуться на главную</a>
+{% endblock %}

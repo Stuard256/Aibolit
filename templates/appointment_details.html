@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Детали приёма</title>
+    <!-- Подключаем Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+    <div class="container mt-4">
+        <div class="card shadow-lg">
+            <div class="card-header bg-primary text-white">
+                <h3 class="mb-0">Детали приёма</h3>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <h5 class="card-title text-muted">Информация о приёме</h5>
+                    <div class="mb-3">
+                        <label for="date" class="form-label">Дата</label>
+                        <input type="date" class="form-control" id="date" name="date" value="{{ appointment.appointment_date }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="time" class="form-label">Время</label>
+                        <input type="time" class="form-control" id="time" name="time" value="{{ appointment.time }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="duration" class="form-label">Длительность приёма (в минутах)</label>
+                        <input type="number" class="form-control" id="duration" name="duration" value="{{ appointment.duration }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Описание</label>
+                        <textarea class="form-control" id="description" name="description" rows="3" required>{{ appointment.description }}</textarea>
+                    </div>
+
+                    <hr>
+
+                    <h5 class="card-title text-muted">Владелец</h5>
+                    <p><strong>ФИО:</strong> 
+                        <a href="{{ url_for('owner_card', owner_id=owner.id) }}" class="text-decoration-none">
+                            {{ owner.name }}
+                        </a>
+                    </p>
+                    <p><strong>Телефон:</strong> {{ owner.phone }}</p>
+
+                    <hr>
+
+                    <h5 class="card-title text-muted">Животное</h5>
+                    <p><strong>Кличка:</strong> {{ pet.name }}</p>
+                    <p><strong>Вид:</strong> {{ pet.species }}</p>
+                    <p><strong>Порода:</strong> {{ pet.breed }}</p>
+
+                    <hr>
+
+                    <!-- Кнопка для сохранения изменений -->
+                    <div class="d-flex justify-content-between">
+                        <button type="submit" class="btn btn-success">Сохранить изменения</button>
+                        <a href="{{ url_for('index') }}" class="btn btn-secondary">Назад</a>
+                    </div>
+                </form>
+
+                <!-- Форма для удаления записи -->
+                <form method="POST" action="{{ url_for('appointment_delete', appointment_id=appointment.id) }}" style="display:inline;">
+                    <button type="submit" class="btn btn-danger mt-3">Удалить запись</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Подключаем Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
