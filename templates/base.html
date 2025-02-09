@@ -18,6 +18,7 @@
         <a class="btn btn-secondary" href="{{ url_for('owners_list') }}">Список владельцев</a>
         <a class="btn btn-secondary" href="{{ url_for('add_pet') }}">Добавить животное</a>
         <a class="btn btn-secondary" href="{{ url_for('pets_list') }}">Список животных</a>
+        <a class="btn btn-secondary" href="{{ url_for('vaccinations') }}">Вакцинации</a>
       </nav>
       
       {% with messages = get_flashed_messages() %}

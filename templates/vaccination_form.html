@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Добавить/Редактировать вакцинацию</title>
+    <!-- Подключение Bootstrap -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="container mt-4">
+    <h1 class="text-center">{% if vaccination %}Редактировать вакцинацию{% else %}Добавить новую вакцинацию{% endif %}</h1>
+
+    <form method="POST" class="mt-4">
+        <div class="mb-3">
+            <label for="owner_id" class="form-label">Владелец:</label>
+            <select class="form-select" name="owner_id" id="owner_id">
+                {% for owner in owners %}
+                <option value="{{ owner.id }}" {% if vaccination and vaccination.owner_id == owner.id %}selected{% endif %}>{{ owner.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="mb-3">
+            <label for="pet_id" class="form-label">Животное:</label>
+            <select class="form-select" name="pet_id" id="pet_id">
+                {% for pet in pets %}
+                <option value="{{ pet.id }}" {% if vaccination and vaccination.pet_id == pet.id %}selected{% endif %}>{{ pet.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="mb-3">
+            <label for="vaccine_name" class="form-label">Название вакцины:</label>
+            <input type="text" class="form-control" name="vaccine_name" id="vaccine_name" value="{{ vaccination.vaccine_name if vaccination else '' }}">
+        </div>
+
+        <div class="mb-3">
+            <label for="date_administered" class="form-label">Дата вакцинации:</label>
+            <input type="date" class="form-control" name="date_administered" id="date_administered" value="{{ vaccination.date_administered if vaccination else '' }}" onchange="setnextDueDate()">
+        </div>
+
+        <div class="mb-3">
+            <label for="vaccination_type" class="form-label">Тип вакцинации:</label>
+            <input type="text" class="form-control" name="vaccination_type" id="vaccination_type" value="{{ vaccination.vaccination_type if vaccination else '' }}">
+        </div>
+
+        <div class="mb-3">
+            <label for="dose_ml" class="form-label">Доза (мл):</label>
+            <input type="text" class="form-control" name="dose_ml" id="dose_ml" value="{{ vaccination.dose_ml if vaccination else '' }}">
+        </div>
+
+        <div class="mb-3">
+            <label for="previous_vaccination_date" class="form-label">Дата предыдущей вакцинации:</label>
+            <input type="date" class="form-control" name="previous_vaccination_date" id="previous_vaccination_date" value="{{ vaccination.previous_vaccination_date if vaccination else '' }}">
+        </div>
+        
+        <div class="mb-3">
+            <label for="next_due_date" class="form-label">Дата следующей вакцинации:</label>
+            <input type="date" class="form-control" name="next_due_date" id="next_due_date" value="{{ vaccination.next_due_date if vaccination else '' }}">
+        </div>
+
+        <button type="submit" class="btn btn-primary">{% if vaccination %}Обновить{% else %}Создать{% endif %}</button>
+    </form>
+
+    <!-- Подключение Bootstrap JS (необязательно, только если нужен JS функционал Bootstrap) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        // Функция для установки даты следующей вакцинации + 1 год
+        function setNextDueDate() {
+            const dateAdministered = document.getElementById('date_administered').value;
+            if (dateAdministered) {
+                const date = new Date(dateAdministered);
+                date.setFullYear(date.getFullYear() + 1); // Устанавливаем +1 год
+                const nextDueDate = date.toISOString().split('T')[0]; // Форматируем в формат YYYY-MM-DD
+                document.getElementById('next_due_date').value = nextDueDate;
+            }
+        }
+
+        // Если дата вакцинации уже установлена, рассчитываем и заполняем дату следующей вакцинации
+        window.onload = function() {
+            if (document.getElementById('date_administered').value) {
+                setNextDueDate();
+            }
+        };
+    </script>
+</body>
+</html>

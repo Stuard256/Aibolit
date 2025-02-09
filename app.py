@@ -1,65 +1,15 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime, date, timedelta
+from models import db, Owner, Pet, Appointment, Note, Vaccination  # Импортируем модели
 import json
 
 app = Flask(__name__)
-# Настройка подключения к базе данных SQLite (файл базы: vet_clinic.db)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///vet_clinic.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.secret_key = 'your_secret_key'  # Замените на надёжное значение
-db = SQLAlchemy(app)
+db.init_app(app)  # Инициализируем db с Flask
 
-# ================================
-# МОДЕЛИ БАЗЫ ДАННЫХ
-# ================================
-
-class Owner(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(150), nullable=False)
-    address = db.Column(db.String(250), nullable=False)
-    phone = db.Column(db.String(50), nullable=False)
-    pets = db.relationship('Pet', backref='owner', lazy=True)
-    appointments = db.relationship('Appointment', backref='owner', lazy=True)
-
-class Pet(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    owner_id = db.Column(db.Integer, db.ForeignKey('owner.id'), nullable=False)
-    name = db.Column(db.String(100), nullable=False)
-    card_number = db.Column(db.String(50), unique=True, nullable=False)
-    species = db.Column(db.String(50), nullable=False)
-    gender = db.Column(db.String(50), nullable=False)
-    breed = db.Column(db.String(100), nullable=False)
-    coloration = db.Column(db.String(100))
-    birth_date = db.Column(db.Date, nullable=False)
-    chronic_diseases = db.Column(db.Text)
-    allergies = db.Column(db.Text)
-    appointments = db.relationship('Appointment', backref='pet', lazy=True)
-
-class Appointment(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    appointment_date = db.Column(db.String(10), nullable=False)  # Дата приёма
-    time = db.Column(db.String(5), nullable=False)  # Время приёма
-    duration = db.Column(db.Integer, nullable=False, default=30)  # Длительность в минутах
-    description = db.Column(db.String(500))
-    owner_id = db.Column(db.Integer, db.ForeignKey('owner.id'), nullable=False)
-    pet_id = db.Column(db.Integer, db.ForeignKey('pet.id'), nullable=False)
-    is_recurring = db.Column(db.Boolean, default=False)  # Для повторных приёмов
-    recurring_type = db.Column(db.String(50))  # Тип повторного приёма, например "10 дней", "1 год" и т.д.
-
-
-
-class Note(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    content = db.Column(db.Text, nullable=False)
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
-
-with app.app_context():
-    db.create_all()
-
-# ================================
-# ГЛАВНАЯ СТРАНИЦА – КАЛЕНДАРЬ И ЗАМЕТКИ АДМИНИСТРАТОРА
-# ================================
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
@@ -77,6 +27,79 @@ def index():
     # Загружаем заметки для отображения
     notes = Note.query.order_by(Note.timestamp.desc()).all()
     return render_template('index.html', notes=notes)
+
+@app.route('/vaccinations')
+def vaccinations():
+    # Получение всех записей вакцинации
+    vaccinations = Vaccination.query.all()
+    return render_template('vaccinations.html', vaccinations=vaccinations)
+
+@app.route('/vaccination/new', methods=['GET', 'POST'])
+def new_vaccination():
+    owners = Owner.query.all()
+    pets = Pet.query.all()
+
+    if request.method == 'POST':
+        owner_id = request.form['owner_id']
+        pet_id = request.form['pet_id']
+
+        owner = Owner.query.get(owner_id)
+        pet = Pet.query.get(pet_id)
+
+        # Автозаполнение данных
+        new_vaccination = Vaccination(
+            vaccine_name=request.form['vaccine_name'],
+            # date_administered=request.form['date_administered'],
+            date_administered = datetime.strptime(request.form['date_administered'], '%Y-%m-%d').date(),
+            previous_vaccination_date = datetime.strptime(request.form['previous_vaccination_date'], '%Y-%m-%d').date() if request.form['previous_vaccination_date'] else None,
+            next_due_date = datetime.strptime(request.form['next_due_date'], '%Y-%m-%d').date() if request.form['next_due_date'] else None,
+            vaccination_type=request.form['vaccination_type'],
+            dose_ml=request.form['dose_ml'],    
+            # previous_vaccination_date=request.form.get('previous_vaccination_date'),
+            # next_due_date=request.form.get('next_due_date'),
+            pet_id=pet.id,
+            owner_id=owner.id,
+            owner_name=owner.name,
+            owner_address=owner.address,
+            pet_species=pet.species,
+            pet_breed=pet.breed,
+            pet_card_number=pet.card_number,
+            pet_age= pet.pet_age(),
+        )
+
+        db.session.add(new_vaccination)
+        db.session.commit()
+
+        flash("Запись о вакцинации успешно добавлена!")
+        return redirect(url_for('vaccinations'))
+
+    return render_template('vaccination_form.html', owners=owners, pets=pets)
+
+@app.route('/vaccination/edit/<int:id>', methods=['GET', 'POST'])
+def edit_vaccination(id):
+    vaccination = Vaccination.query.get(id)
+    if request.method == 'POST':
+        vaccination.vaccine_name = request.form['vaccine_name']
+        vaccination.date_administered = request.form['date_administered']
+        vaccination.vaccination_type = request.form['vaccination_type']
+        vaccination.dose_ml = request.form['dose_ml']
+        vaccination.previous_vaccination_date = request.form.get('previous_vaccination_date')
+
+        db.session.commit()
+
+        flash("Запись о вакцинации успешно обновлена!")
+        return redirect(url_for('vaccinations'))
+
+    return render_template('vaccination_form.html', vaccination=vaccination)
+
+@app.route('/vaccination/delete/<int:id>', methods=['POST'])
+def delete_vaccination(id):
+    vaccination = Vaccination.query.get(id)
+    db.session.delete(vaccination)
+    db.session.commit()
+
+    flash("Запись о вакцинации успешно удалена!")
+    return redirect(url_for('vaccinations'))
 
 @app.route('/delete_note/<int:note_id>')
 def delete_note(note_id):
@@ -135,7 +158,8 @@ def appointment_delete(appointment_id):
 
 @app.route('/appointments')
 def appointments():
-    return render_template('appointments.html')
+    appointments = Appointment.query.all()
+    return render_template('appointments.html', appointments=appointments)
 
 
 
