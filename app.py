@@ -3,15 +3,17 @@ from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime, date, timedelta
 from models import db, Owner, Pet, Appointment, Note, Vaccination  # Импортируем модели
 import json
+import csv_importer
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///vet_clinic.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['JSON_AS_ASCII'] = False
 app.secret_key = 'your_secret_key'  # Замените на надёжное значение
 db.init_app(app)  # Инициализируем db с Flask
 
 
-@app.route('/', methods=['GET', 'POST'])
+@app.route('/', methods=['GET', 'POST'])    
 def index():
     if request.method == 'POST':
         # Если добавляется заметка администратора
@@ -296,13 +298,40 @@ def owner_card(owner_id):
 # Список владельцев с поиском по ФИО
 @app.route('/owners')
 def owners_list():
-    search_query = request.args.get('search', '')
+    search_query = request.args.get('search', '').strip()
+    search_field = request.args.get('search_field', 'name')  # По умолчанию ищем по ФИО
+    
+    # Базовый запрос
+    query = Owner.query
+    
     if search_query:
-        search_query_lower = f"%{search_query.lower()}%"
-        owners_filtered = Owner.query.filter(Owner.name.ilike(search_query_lower)).all()
-    else:
-        owners_filtered = Owner.query.all()
-    return render_template('owners.html', owners=owners_filtered, search_query=search_query)
+        if search_field == 'id':
+            try:
+                search_id = int(search_query)
+                query = query.filter(Owner.id == search_id)
+            except ValueError:
+                # Если ввели не число для ID
+                query = query.filter(False)  # Возвращаем пустой результат
+        else:
+            search_pattern = f"%{search_query}%"
+            if search_field == 'name':
+                query = query.filter(Owner.name.ilike(search_pattern))
+            elif search_field == 'address':
+                query = query.filter(Owner.address.ilike(search_pattern))
+            elif search_field == 'phone':
+                # Удаляем все нецифровые символы для поиска по телефону
+                phone_digits = ''.join(filter(str.isdigit, search_query))
+                if phone_digits:
+                    query = query.filter(Owner.phone.ilike(f"%{phone_digits}%"))
+    
+    owners_filtered = query.order_by(Owner.name).all()
+    
+    return render_template(
+        'owners.html',
+        owners=owners_filtered,
+        search_query=search_query,
+        search_field=search_field
+    )
 
 # ================================
 # РАБОТА С КАРТОЧКАМИ ЖИВОТНЫХ
@@ -313,67 +342,136 @@ def owners_list():
 def add_pet():
     owners = Owner.query.all()
     if not owners:
-        flash("Сначала создайте карточку владельца!")
+        flash("Сначала создайте карточку владельца!", 'error')
         return redirect(url_for('add_owner'))
-    if request.method == 'POST':
-        try:
-            owner_id = int(request.form['owner_id'])
-        except ValueError:
-            flash("Неверный идентификатор владельца!")
-            return redirect(url_for('add_pet'))
-        name = request.form['name']
-        card_number = request.form['card_number']
-        species = request.form['species']
-        gender = request.form['gender']
-        breed = request.form['breed']
-        coloration = request.form['coloration']
-        birth_date_str = request.form['birth_date']
-        try:
-            # Ожидается формат "ДД-MM-ГГГГ", если не подходит – пробуем ISO ("ГГГГ-MM-ДД")
-            birth_date = datetime.strptime(birth_date_str, "%d-%m-%Y").date()
-        except ValueError:
-            try:
-                birth_date = datetime.strptime(birth_date_str, "%Y-%m-%d").date()
-            except ValueError:
-                flash("Неверный формат даты рождения.")
-                return redirect(url_for('add_pet'))
-        chronic_diseases = request.form['chronic_diseases']
-        allergies = request.form['allergies']
-        new_pet = Pet(owner_id=owner_id, name=name, card_number=card_number, species=species,
-                            gender=gender, breed=breed, coloration=coloration, birth_date=birth_date,
-                            chronic_diseases=chronic_diseases, allergies=allergies)
-        db.session.add(new_pet)
-        db.session.commit()
-        flash("Карточка животного успешно добавлена!")
-        return redirect(url_for('pets_list'))
-    return render_template('add_pet.html', owners=owners)
 
-# Карточка животного с возможностью редактирования
+    if request.method == 'POST':
+        form_data = {
+            'owner_id': request.form.get('owner_id'),
+            'name': request.form.get('name'),
+            'card_number': request.form.get('card_number'),
+            'species': request.form.get('species'),
+            'gender': request.form.get('gender'),
+            'breed': request.form.get('breed'),
+            'coloration': request.form.get('coloration'),
+            'birth_date': request.form.get('birth_date'),
+            'chronic_diseases': request.form.get('chronic_diseases'),
+            'allergies': request.form.get('allergies')
+        }
+
+        # Проверка на уникальность номера карточки
+        if Pet.query.filter_by(card_number=form_data['card_number']).first():
+            flash("Ошибка: животное с таким номером карточки уже существует!", 'error')
+            return render_template('add_pet.html', owners=owners, form_data=form_data)
+
+        try:
+            owner_id = int(form_data['owner_id'])
+        except ValueError:
+            flash("Неверный идентификатор владельца!", 'error')
+            return render_template('add_pet.html', owners=owners, form_data=form_data)
+
+        try:
+            birth_date_str = form_data['birth_date']
+            try:
+                birth_date = datetime.strptime(birth_date_str, "%d-%m-%Y").date()
+            except ValueError:
+                try:
+                    birth_date = datetime.strptime(birth_date_str, "%Y-%m-%d").date()
+                except ValueError:
+                    flash("Неверный формат даты рождения.", 'error')
+                    return render_template('add_pet.html', owners=owners, form_data=form_data)
+
+            new_pet = Pet(
+                owner_id=owner_id,
+                name=form_data['name'],
+                card_number=form_data['card_number'],
+                species=form_data['species'],
+                gender=form_data['gender'],
+                breed=form_data['breed'],
+                coloration=form_data['coloration'],
+                birth_date=birth_date,
+                chronic_diseases=form_data['chronic_diseases'],
+                allergies=form_data['allergies']
+            )
+
+            db.session.add(new_pet)
+            db.session.commit()
+            flash("Карточка животного успешно добавлена!", 'success')
+            return redirect(url_for('pets_list'))
+
+        except Exception as e:
+            db.session.rollback()
+            flash(f"Ошибка при добавлении карточки: {str(e)}", 'error')
+            return render_template('add_pet.html', owners=owners, form_data=form_data)
+
+    return render_template('add_pet.html', owners=owners, form_data={})
+
 @app.route('/pet/<int:pet_id>', methods=['GET', 'POST'])
 def pet_card(pet_id):
     pet = Pet.query.get_or_404(pet_id)
+    
     if request.method == 'POST':
-        pet.name = request.form['name']
-        pet.card_number = request.form['card_number']
-        pet.species = request.form['species']
-        pet.gender = request.form['gender']
-        pet.breed = request.form['breed']
-        pet.coloration = request.form['coloration']
-        birth_date_str = request.form['birth_date']
+        form_data = {
+            'name': request.form.get('name'),
+            'card_number': request.form.get('card_number'),
+            'species': request.form.get('species'),
+            'gender': request.form.get('gender'),
+            'breed': request.form.get('breed'),
+            'coloration': request.form.get('coloration'),
+            'birth_date': request.form.get('birth_date'),
+            'chronic_diseases': request.form.get('chronic_diseases'),
+            'allergies': request.form.get('allergies')
+        }
+
+        # Проверка на уникальность номера карточки (если изменился)
+        if form_data['card_number'] != pet.card_number:
+            if Pet.query.filter_by(card_number=form_data['card_number']).first():
+                flash("Ошибка: животное с таким номером карточки уже существует!", 'error')
+                return render_template('pet_card.html', pet=pet, owner=pet.owner, form_data=form_data)
+
         try:
-            pet.birth_date = datetime.strptime(birth_date_str, "%d-%m-%Y").date()
-        except ValueError:
+            # Обновляем данные питомца
+            pet.name = form_data['name']
+            pet.card_number = form_data['card_number']
+            pet.species = form_data['species']
+            pet.gender = form_data['gender']
+            pet.breed = form_data['breed']
+            pet.coloration = form_data['coloration']
+            
             try:
-                pet.birth_date = datetime.strptime(birth_date_str, "%Y-%m-%d").date()
+                pet.birth_date = datetime.strptime(form_data['birth_date'], "%d-%m-%Y").date()
             except ValueError:
-                flash("Неверный формат даты рождения.")
-                return redirect(url_for('pet_card', pet_id=pet_id))
-        pet.chronic_diseases = request.form['chronic_diseases']
-        pet.allergies = request.form['allergies']
-        db.session.commit()
-        flash("Карточка животного обновлена!")
-        return redirect(url_for('pets_list'))
-    return render_template('pet_card.html', pet=pet, owner=pet.owner)
+                try:
+                    pet.birth_date = datetime.strptime(form_data['birth_date'], "%Y-%m-%d").date()
+                except ValueError:
+                    flash("Неверный формат даты рождения.", 'error')
+                    return render_template('pet_card.html', pet=pet, owner=pet.owner, form_data=form_data)
+            
+            pet.chronic_diseases = form_data['chronic_diseases']
+            pet.allergies = form_data['allergies']
+            
+            db.session.commit()
+            flash("Карточка животного обновлена!", 'success')
+            return redirect(url_for('pets_list'))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f"Ошибка при обновлении карточки: {str(e)}", 'error')
+            return render_template('pet_card.html', pet=pet, owner=pet.owner, form_data=form_data)
+    
+    # Для GET запроса просто отображаем текущие данные питомца
+    form_data = {
+        'name': pet.name,
+        'card_number': pet.card_number,
+        'species': pet.species,
+        'gender': pet.gender,
+        'breed': pet.breed,
+        'coloration': pet.coloration,
+        'birth_date': pet.birth_date.strftime('%d-%m-%Y'),
+        'chronic_diseases': pet.chronic_diseases,
+        'allergies': pet.allergies
+    }
+    return render_template('pet_card.html', pet=pet, owner=pet.owner, form_data=form_data)
 
 # Список животных
 @app.route('/pets')
@@ -387,6 +485,33 @@ def get_pets_by_owner(owner_id):
     pets = Pet.query.filter_by(owner_id=owner_id).all()
     pets_list = [{'id': pet.id, 'name': pet.name} for pet in pets]
     return jsonify(pets_list)
+
+# ================================
+# КОМАНДЫ ДЛЯ РАБОТЫ С БАЗОЙ ДАННЫХ
+# ================================
+@app.cli.command("import-csv")
+def import_csv_command():
+    """Импорт данных из CSV файла"""
+    try:
+        from csv_importer import import_csv  # Вынесем импортер в отдельный файл
+        import_csv('test_.csv')
+        print("Импорт успешно завершен!")
+    except Exception as e:
+        print(f"Ошибка импорта: {str(e)}")
+        import traceback
+        traceback.print_exc()
+
+@app.cli.command("reset-db")
+def reset_db():
+    """Полный сброс и пересоздание базы данных"""
+    try:
+        db.drop_all()
+        db.create_all()
+        print("База данных успешно пересоздана!")
+    except Exception as e:
+        print(f"Ошибка: {str(e)}")
+        import traceback
+        traceback.print_exc()
 
 # ================================
 # ЗАПУСК ПРИЛОЖЕНИЯ
