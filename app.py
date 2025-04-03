@@ -180,6 +180,8 @@ def edit_treatment(treatment_id):
     
     return render_template('edit_treatment.html', form=form, treatment=treatment)
 
+
+
 @app.route('/delete_treatment/<int:treatment_id>', methods=['POST'])
 def delete_treatment_id(treatment_id):
     treatment = Treatment.query.get_or_404(treatment_id)
@@ -645,13 +647,19 @@ def appointment_details(appointment_id):
 def appointment_delete(appointment_id):
     appointment = Appointment.query.get_or_404(appointment_id)
     
-    # Удаление записи из базы данных
-    db.session.delete(appointment)
-    db.session.commit()
+    try:
+        # Удаляем все связанные назначения
+        AppointmentTreatment.query.filter_by(appointment_id=appointment_id).delete()
+        
+        # Удаляем сам приём
+        db.session.delete(appointment)
+        db.session.commit()
+        flash('Приём успешно удалён!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Ошибка при удалении приёма: {str(e)}', 'danger')
     
-    flash('Запись успешно удалена!', 'danger')
     return redirect(url_for('index'))
-
 
 @app.route('/appointments')
 def appointments():
