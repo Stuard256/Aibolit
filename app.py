@@ -638,7 +638,7 @@ def appointment_details(appointment_id):
         
         db.session.commit()
         flash('Запись успешно обновлена!', 'success')
-        return redirect(url_for('index'))
+        return redirect(url_for('appointment_details', appointment_id=appointment.id))
 
     return render_template('appointment_details.html', appointment=appointment, owner=appointment.owner, pet=appointment.pet)
 
@@ -721,7 +721,7 @@ def new_appointment():
                 db.session.commit()
 
         flash("Запись на приём успешно добавлена!")
-        return redirect(url_for('index'))
+        return redirect(url_for('appointment_details', appointment_id=new_appointment.id))
 
     return render_template('appointment_form.html', owners=owners, pets=pets, date=date, time=time)
 

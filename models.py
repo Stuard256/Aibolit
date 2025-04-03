@@ -32,7 +32,6 @@ class Pet(db.Model):
     def vaccination_age(self, vaccination_date):
         """Возраст на момент вакцинации в формате 'X г Y м Z д' с пропуском нулевых значений"""
         delta = relativedelta(vaccination_date, self.birth_date)
-        
         age_parts = []
         if delta.years > 0:
             age_parts.append(f"{delta.years} г")
@@ -40,9 +39,17 @@ class Pet(db.Model):
             age_parts.append(f"{delta.months} м")
         if delta.days > 0:
             age_parts.append(f"{delta.days} д")
-            
         return " ".join(age_parts) if age_parts else "0 д"
-
+    def pet_formatted_age(self):
+        delta = relativedelta(datetime.today().date(), self.birth_date)
+        age_parts = []
+        if delta.years > 0:
+            age_parts.append(f"{delta.years} г")
+        if delta.months > 0:
+            age_parts.append(f"{delta.months} м")
+        if delta.days > 0:
+            age_parts.append(f"{delta.days} д")
+        return " ".join(age_parts) if age_parts else "0 д"
 
 class Appointment(db.Model):
     id = db.Column(db.Integer, primary_key=True)

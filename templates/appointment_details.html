@@ -1,168 +1,240 @@
-<!DOCTYPE html>
-<html lang="ru">
+{% extends 'base.html' %}
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Детали приёма</title>
-    <!-- Подключаем Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Подключаем иконки Bootstrap Icons -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
-</head>
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-4">Редактирование приёма</h2>
 
-<body class="bg-light">
-    <div class="container mt-4">
-        <div class="card shadow-lg">
-            <div class="card-header bg-primary text-white">
-                <h3 class="mb-0">Детали приёма</h3>
+    <form method="POST" action="{{ url_for('appointment_details', appointment_id=appointment.id) }}">
+        <div class="row">
+            <!-- Левая колонка - Основная информация -->
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">Основная информация</h5>
+                    </div>
+                    <div class="card-body">
+                        <!-- Дата и время приёма -->
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="date" class="form-label">Дата*</label>
+                                <input type="date" class="form-control" id="date" name="date"
+                                    value="{{ appointment.appointment_date }}" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="time" class="form-label">Время*</label>
+                                <input type="time" class="form-control" id="time" name="time"
+                                    value="{{ appointment.time }}" required>
+                            </div>
+                        </div>
+
+                        <!-- Продолжительность приёма -->
+                        <div class="mb-3">
+                            <label for="duration" class="form-label">Продолжительность (мин)*</label>
+                            <input type="number" class="form-control" id="duration" name="duration"
+                                value="{{ appointment.duration }}" required>
+                        </div>
+
+                        <!-- Описание приёма -->
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Описание*</label>
+                            <textarea class="form-control" id="description" name="description" rows="3"
+                                required>{{ appointment.description }}</textarea>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="card-body">
-                <form method="POST" action="{{ url_for('appointment_details', appointment_id=appointment.id) }}">
-                    <h5 class="card-title text-muted">Информация о приёме</h5>
-                    <div class="mb-3">
-                        <label for="date" class="form-label">Дата</label>
-                        <input type="date" class="form-control" id="date" name="date"
-                            value="{{ appointment.appointment_date }}" required>
+
+            <!-- Правая колонка - Владелец и животное -->
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">Клиент и питомец</h5>
                     </div>
-                    <div class="mb-3">
-                        <label for="time" class="form-label">Время</label>
-                        <input type="time" class="form-control" id="time" name="time" value="{{ appointment.time }}"
-                            required>
+                    <div class="card-body">
+                        <!-- Информация о владельце -->
+                        <div class="mb-3">
+                            <label class="form-label">Владелец*</label>
+                            <div class="p-3 bg-light rounded">
+                                <p class="mb-1"><strong>ФИО:</strong>
+                                    <a href="{{ url_for('owner_card', owner_id=owner.id) }}"
+                                        class="text-decoration-none">
+                                        {{ owner.name }}
+                                    </a>
+                                </p>
+                                <p class="mb-0"><strong>Телефон:</strong> {{ owner.phone }}</p>
+                            </div>
+                        </div>
+
+                        <!-- Информация о животном -->
+                        <div class="mb-3">
+                            <label class="form-label">Животное*</label>
+                            <div id="pet-info" class="p-3 bg-light rounded">
+                                <div class="row">
+                                    <div class="col-6">
+                                        <p class="mb-1"><strong>Кличка:</strong> {{ pet.name }}</p>
+                                        <p class="mb-1"><strong>Вид:</strong> {{ pet.species }}</p>
+                                        <p class="mb-0"><strong>Порода:</strong> {{ pet.breed }}</p>
+                                    </div>
+                                    <div class="col-6">
+                                        <p class="mb-1"><strong>Дата рождения:</strong> {{
+                                            pet.birth_date.strftime('%d.%m.%Y') }}</p>
+                                        <p class="mb-0"><strong>Возраст:</strong> {{ pet.pet_formatted_age() }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <div class="mb-3">
-                        <label for="duration" class="form-label">Длительность приёма (в минутах)</label>
-                        <input type="number" class="form-control" id="duration" name="duration"
-                            value="{{ appointment.duration }}" required>
+                </div>
+            </div>
+        </div>
+
+        <!-- Нижний блок - Назначения и управление -->
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">Повторный приём</h5>
                     </div>
-                    <div class="mb-3">
-                        <label for="description" class="form-label">Описание</label>
-                        <textarea class="form-control" id="description" name="description" rows="3"
-                            required>{{ appointment.description }}</textarea>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="recurring" class="form-label">Тип повторения</label>
+                            <select class="form-control" id="recurring" name="recurring">
+                                <option value="none" {% if not appointment.is_recurring %}selected{% endif %}>Не
+                                    повторять</option>
+                                <option value="10_days" {% if appointment.recurring_type=='10_days' %}selected{% endif
+                                    %}>Через 10 дней</option>
+                                <option value="21_days" {% if appointment.recurring_type=='21_days' %}selected{% endif
+                                    %}>Через 21 день</option>
+                                <option value="1_year" {% if appointment.recurring_type=='1_year' %}selected{% endif %}>
+                                    Через год</option>
+                                <option value="1_year_birthday" {% if appointment.recurring_type=='1_year_birthday'
+                                    %}selected{% endif %}>Когда исполнилось 1 год</option>
+                                <option value="custom_date" {% if appointment.recurring_type=='custom_date' %}selected{%
+                                    endif %}>Выбрать дату</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3" id="custom_date_field"
+                            style="display: {% if appointment.recurring_type == 'custom_date' %}block{% else %}none{% endif %};">
+                            <label for="custom_date" class="form-label">Дата повторного приёма</label>
+                            <input type="date" class="form-control" id="custom_date" name="custom_date"
+                                value="{{ appointment.appointment_date if appointment.recurring_type == 'custom_date' else '' }}">
+                        </div>
                     </div>
+                </div>
+            </div>
 
-                    <hr>
-
-                    <h5 class="card-title text-muted">Владелец</h5>
-                    <p><strong>ФИО:</strong>
-                        <a href="{{ url_for('owner_card', owner_id=owner.id) }}" class="text-decoration-none">
-                            {{ owner.name }}
-                        </a>
-                    </p>
-                    <p><strong>Телефон:</strong> {{ owner.phone }}</p>
-
-                    <hr>
-
-                    <h5 class="card-title text-muted">Животное</h5>
-                    <p><strong>Кличка:</strong> {{ pet.name }}</p>
-                    <p><strong>Вид:</strong> {{ pet.species }}</p>
-                    <p><strong>Порода:</strong> {{ pet.breed }}</p>
-
-                    <hr>
-
-                    <!-- Секция назначений -->
-                    <h5 class="card-title text-muted">Назначения
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">Назначения</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="treatments-list" class="mb-3">
+                            {% if appointment.treatments %}
+                            <div class="table-responsive">
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Назначение</th>
+                                            <th>Кол-во</th>
+                                            <th>Ед. изм.</th>
+                                            <th>Сумма</th>
+                                            <th></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for treatment in appointment.treatments %}
+                                        <tr>
+                                            <td>{{ treatment.treatment.name }}</td>
+                                            <td>{{ treatment.quantity }}</td>
+                                            <td>{{ treatment.treatment.unit }}</td>
+                                            <td>{{ treatment.total_price }} руб.</td>
+                                            <td class="text-end">
+                                                <a href="{{ url_for('delete_treatment', treatment_id=treatment.id, appointment_id=appointment.id) }}"
+                                                    class="btn btn-sm btn-outline-danger"
+                                                    onclick="return confirm('Удалить это назначение?')">
+                                                    <i class="bi bi-trash"></i>
+                                                </a>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                                <div class="text-end fw-bold">
+                                    Итого: {{ appointment.treatments|sum(attribute='total_price') }} руб.
+                                </div>
+                            </div>
+                            {% else %}
+                            <div class="alert alert-info">Нет назначений</div>
+                            {% endif %}
+                        </div>
                         <a href="{{ url_for('treatment_calculator', appointment_id=appointment.id, pet_id=pet.id) }}"
-                            class="btn btn-sm btn-outline-primary ms-2">
-                            <i class="bi bi-plus-lg"></i> Добавить/изменить
+                            class="btn btn-secondary w-100">
+                            <i class="bi bi-plus-circle"></i> Добавить/изменить назначения
                         </a>
-                    </h5>
-
-                    {% if appointment.treatments %}
-                    <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>Назначение</th>
-                                    <th>Количество</th>
-                                    <th>Ед. изм.</th>
-                                    <th>Цена</th>
-                                    <th>Сумма</th>
-                                    <th></th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for treatment in appointment.treatments %}
-                                <tr>
-                                    <td>{{ treatment.treatment.name }}</td>
-                                    <td>{{ treatment.quantity }}</td>
-                                    <td>{{ treatment.treatment.unit }}</td>
-                                    <td>{{ treatment.treatment.price }} руб.</td>
-                                    <td>{{ treatment.total_price }} руб.</td>
-                                    <td class="text-end">
-                                        <a href="{{ url_for('delete_treatment', treatment_id=treatment.id, appointment_id=appointment.id) }}"
-                                            class="btn btn-sm btn-outline-danger"
-                                            onclick="return confirm('Удалить это назначение?')">
-                                            <i class="bi bi-trash"></i>
-                                        </a>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                                <tr class="table-active">
-                                    <td colspan="4"><strong>Итого:</strong></td>
-                                    <td><strong>{{ appointment.treatments|sum(attribute='total_price') }} руб.</strong>
-                                    </td>
-                                    <td></td>
-                                </tr>
-                            </tbody>
-                        </table>
                     </div>
-                    {% else %}
-                    <div class="alert alert-info">Нет назначений</div>
-                    {% endif %}
+                </div>
+            </div>
+        </div>
 
-                    <hr>
+        <!-- Кнопки управления -->
+        <div class="d-flex justify-content-between mt-3">
+            <div>
+                <button type="submit" class="btn btn-success me-2">
+                    <i class="bi bi-check-circle"></i> Сохранить
+                </button>
+                <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Назад
+                </a>
+            </div>
+            <div>
+                <a href="{{ url_for('generate_report', appointment_id=appointment.id) }}" class="btn btn-info me-2">
+                    <i class="bi bi-file-earmark-text"></i> Печать
+                </a>
+                <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal"
+                    data-bs-target="#deleteAppointmentModal">
+                    <i class="bi bi-trash"></i> Удалить приём
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
 
-                    <!-- Кнопки управления -->
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <button type="submit" class="btn btn-success me-2">
-                                <i class="bi bi-check-circle"></i> Сохранить
-                            </button>
-                            <a href="{{ url_for('index') }}" class="btn btn-secondary">
-                                <i class="bi bi-arrow-left"></i> Назад
-                            </a>
-                        </div>
-                        <div>
-                            <a href="{{ url_for('generate_report', appointment_id=appointment.id) }}"
-                                class="btn btn-info me-2">
-                                <i class="bi bi-file-earmark-text"></i> Печать
-                            </a>
-                            <button type="button" class="btn btn-danger" data-bs-toggle="modal"
-                                data-bs-target="#deleteAppointmentModal">
-                                <i class="bi bi-trash"></i> Удалить
-                            </button>
-                        </div>
-                    </div>
+<!-- Modal для подтверждения удаления приёма -->
+<div class="modal fade" id="deleteAppointmentModal" tabindex="-1" aria-labelledby="deleteAppointmentModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteAppointmentModalLabel">Подтверждение удаления</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                Вы уверены, что хотите удалить этот приём? Это действие нельзя отменить.
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <form action="{{ url_for('appointment_delete', appointment_id=appointment.id) }}" method="POST">
+                    <button type="submit" class="btn btn-danger">Удалить</button>
                 </form>
             </div>
         </div>
     </div>
+</div>
 
-    <!-- Modal для подтверждения удаления приёма -->
-    <div class="modal fade" id="deleteAppointmentModal" tabindex="-1" aria-labelledby="deleteAppointmentModalLabel"
-        aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="deleteAppointmentModalLabel">Подтверждение удаления</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    Вы уверены, что хотите удалить этот приём? Это действие нельзя отменить.
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
-                    <form action="{{ url_for('appointment_delete', appointment_id=appointment.id) }}" method="POST">
-                        <button type="submit" class="btn btn-danger">Удалить</button>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Подключаем Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-
-</html>
+{% block scripts %}
+<script>
+    $(document).ready(function () {
+        // Обработка изменения типа повторного приёма
+        $('#recurring').on('change', function () {
+            if (this.value === 'custom_date') {
+                $('#custom_date_field').show();
+            } else {
+                $('#custom_date_field').hide();
+            }
+        });
+    });
+</script>
+{% endblock %}
+{% endblock %}

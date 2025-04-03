@@ -1,110 +1,209 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<h2>{% if appointment %}Редактирование приёма{% else %}Новый приём{% endif %}</h2>
+<div class="container mt-4">
+    <h2 class="mb-4">{% if appointment %}Редактирование приёма{% else %}Новый приём{% endif %}</h2>
 
-<form method="POST">
-    <!-- Дата и время приёма -->
-    <div class="mb-3">
-        <label for="date" class="form-label">Дата</label>
-        <input type="date" class="form-control" id="date" name="date"
-            value="{{ appointment.appointment_date if appointment else '' }}" required>
-    </div>
-    <div class="mb-3">
-        <label for="time" class="form-label">Время</label>
-        <input type="time" class="form-control" id="time" name="time"
-            value="{{ appointment.time if appointment else '' }}" required>
-    </div>
+    <form method="POST">
+        <div class="row">
+            <!-- Левая колонка - Основная информация -->
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">Основная информация</h5>
+                    </div>
+                    <div class="card-body">
+                        <!-- Дата и время приёма -->
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="date" class="form-label">Дата*</label>
+                                <input type="date" class="form-control" id="date" name="date"
+                                    value="{{ appointment.appointment_date if appointment else '' }}" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="time" class="form-label">Время*</label>
+                                <input type="time" class="form-control" id="time" name="time"
+                                    value="{{ appointment.time if appointment else '' }}" required>
+                            </div>
+                        </div>
 
-    <!-- Описание приёма -->
-    <div class="mb-3">
-        <label for="description" class="form-label">Описание</label>
-        <textarea class="form-control" id="description" name="description" rows="3"
-            required>{{ appointment.description if appointment else '' }}</textarea>
-    </div>
+                        <!-- Продолжительность приёма -->
+                        <div class="mb-3">
+                            <label for="duration" class="form-label">Продолжительность (мин)*</label>
+                            <input type="number" class="form-control" id="duration" name="duration"
+                                value="{{ appointment.duration if appointment else 30 }}" required>
+                        </div>
 
-    <!-- Выбор владельца и животного с поиском -->
-    <div class="mb-3">
-        <label for="owner_search" class="form-label">Владелец:</label>
-        <select class="form-select" id="owner_search" name="owner_id" required
-            data-ajax-url="{{ url_for('search_owners') }}">
-            {% if appointment %}
-            <option value="{{ appointment.owner.id }}" selected>
-                {{ appointment.owner.name }}
-            </option>
-            {% endif %}
-        </select>
-    </div>
-
-    <div class="mb-3">
-        <label for="pet_search" class="form-label">Животное:</label>
-        <select class="form-select" id="pet_search" name="pet_id" required data-ajax-url="/api/pets_by_owner">
-            {% if appointment %}
-            <option value="{{ appointment.pet.id }}" selected>
-                {{ appointment.pet.name }} ({{ appointment.pet.card_number }})
-            </option>
-            {% endif %}
-        </select>
-    </div>
-
-    <!-- Продолжительность приёма (по умолчанию 30 минут) -->
-    <div class="mb-3">
-        <label for="duration" class="form-label">Продолжительность (мин)</label>
-        <input type="number" class="form-control" id="duration" name="duration"
-            value="{{ appointment.duration if appointment else 30 }}" required>
-    </div>
-
-    <!-- Выбор повторного приёма -->
-    <div class="mb-3">
-        <label for="recurring" class="form-label">Повторный приём</label>
-        <select class="form-control" id="recurring" name="recurring">
-            <option value="none" {% if not appointment or not appointment.is_recurring %}selected{% endif %}>Не
-                повторять</option>
-            <option value="10_days" {% if appointment and appointment.recurring_type=='10_days' %}selected{% endif %}>
-                Через 10 дней</option>
-            <option value="21_days" {% if appointment and appointment.recurring_type=='21_days' %}selected{% endif %}>
-                Через 21 день</option>
-            <option value="1_year" {% if appointment and appointment.recurring_type=='1_year' %}selected{% endif %}>
-                Через год</option>
-            <option value="1_year_birthday" {% if appointment and appointment.recurring_type=='1_year_birthday'
-                %}selected{% endif %}>Когда исполнилось 1 год</option>
-            <option value="custom_date" {% if appointment and appointment.recurring_type=='custom_date' %}selected{%
-                endif %}>Выбрать дату</option>
-        </select>
-    </div>
-
-    <!-- Поле для выбора конкретной даты, если выбран вариант с кастомной датой -->
-    <div class="mb-3" id="custom_date_field"
-        style="display: {% if appointment and appointment.recurring_type == 'custom_date' %}block{% else %}none{% endif %};">
-        <label for="custom_date" class="form-label">Выберите дату повторного приёма</label>
-        <input type="date" class="form-control" id="custom_date" name="custom_date"
-            value="{{ appointment.appointment_date if appointment and appointment.recurring_type == 'custom_date' else '' }}">
-    </div>
-
-    <button type="submit" class="btn btn-success">Записать</button>
-
-    <div class="mb-3">
-        <label class="form-label">Назначения</label>
-        <div id="treatments-list" class="mb-2">
-            {% if appointment and appointment.treatments %}
-            {% for treatment in appointment.treatments %}
-            <div class="treatment-item" data-id="{{ treatment.id }}">
-                {{ treatment.treatment.name }} - {{ treatment.quantity }} {{ treatment.treatment.unit }} ({{
-                treatment.total_price }} руб.)
-                <a href="{{ url_for('treatment_calculator', appointment_id=appointment.id) }}"
-                    class="btn btn-sm btn-outline-primary">Ред.</a>
+                        <!-- Описание приёма -->
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Описание*</label>
+                            <textarea class="form-control" id="description" name="description" rows="3"
+                                required>{{ appointment.description if appointment else '' }}</textarea>
+                        </div>
+                    </div>
+                </div>
             </div>
-            {% endfor %}
-            {% else %}
-            <div class="text-muted">Нет назначений</div>
-            {% endif %}
+
+            <!-- Правая колонка - Владелец и животное -->
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">Клиент и питомец</h5>
+                    </div>
+                    <div class="card-body">
+                        <!-- Выбор владельца -->
+                        <div class="mb-3">
+                            <label for="owner_search" class="form-label">Владелец*</label>
+                            <select class="form-select" id="owner_search" name="owner_id" required
+                                data-ajax-url="{{ url_for('search_owners') }}">
+                                {% if appointment %}
+                                <option value="{{ appointment.owner.id }}" selected>
+                                    {{ appointment.owner.name }}
+                                </option>
+                                {% endif %}
+                            </select>
+                        </div>
+
+                        <!-- Выбор животного -->
+                        <div class="mb-3">
+                            <label for="pet_search" class="form-label">Животное*</label>
+                            <select class="form-select" id="pet_search" name="pet_id" required
+                                data-ajax-url="/api/pets_by_owner">
+                                {% if appointment %}
+                                <option value="{{ appointment.pet.id }}" selected>
+                                    {{ appointment.pet.name }} ({{ appointment.pet.card_number }})
+                                </option>
+                                {% endif %}
+                            </select>
+                        </div>
+
+                        <!-- Информация о выбранном животном -->
+                        <div id="pet-info" class="p-3 bg-light rounded"
+                            style="display: {% if appointment %}block{% else %}none{% endif %};">
+                            {% if appointment %}
+                            <div class="row">
+                                <div class="col-6">
+                                    <p><strong>Вид:</strong> {{ appointment.pet.species }}</p>
+                                    <p><strong>Порода:</strong> {{ appointment.pet.breed }}</p>
+                                </div>
+                                <div class="col-6">
+                                    <p><strong>Дата рождения:</strong> {{
+                                        appointment.pet.birth_date.strftime('%d.%m.%Y') }}</p>
+                                    <p><strong>Возраст:</strong> {{ appointment.pet.age() }}</p>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
-        <a href="{{ url_for('treatment_calculator', appointment_id=appointment.id if appointment else 'new', pet_id=pet.id if pet else '') }}"
-            class="btn btn-secondary">
-            Калькулятор назначений
-        </a>
-    </div>
-</form>
+
+        <!-- Нижний блок - Назначения и повторные приёмы -->
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">Повторный приём</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="recurring" class="form-label">Тип повторения</label>
+                            <select class="form-control" id="recurring" name="recurring">
+                                <option value="none" {% if not appointment or not appointment.is_recurring %}selected{%
+                                    endif %}>Не повторять</option>
+                                <option value="10_days" {% if appointment and appointment.recurring_type=='10_days'
+                                    %}selected{% endif %}>
+                                    Через 10 дней</option>
+                                <option value="21_days" {% if appointment and appointment.recurring_type=='21_days'
+                                    %}selected{% endif %}>
+                                    Через 21 день</option>
+                                <option value="1_year" {% if appointment and appointment.recurring_type=='1_year'
+                                    %}selected{% endif %}>
+                                    Через год</option>
+                                <option value="1_year_birthday" {% if appointment and
+                                    appointment.recurring_type=='1_year_birthday' %}selected{% endif %}>
+                                    Когда исполнилось 1 год</option>
+                                <option value="custom_date" {% if appointment and
+                                    appointment.recurring_type=='custom_date' %}selected{% endif %}>
+                                    Выбрать дату</option>
+                            </select>
+                        </div>
+
+                        <!-- Поле для выбора конкретной даты -->
+                        <div class="mb-3" id="custom_date_field"
+                            style="display: {% if appointment and appointment.recurring_type == 'custom_date' %}block{% else %}none{% endif %};">
+                            <label for="custom_date" class="form-label">Дата повторного приёма</label>
+                            <input type="date" class="form-control" id="custom_date" name="custom_date"
+                                value="{{ appointment.appointment_date if appointment and appointment.recurring_type == 'custom_date' else '' }}">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">Назначения</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="treatments-list" class="mb-3">
+                            {% if appointment and appointment.treatments %}
+                            <div class="table-responsive">
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Назначение</th>
+                                            <th>Кол-во</th>
+                                            <th>Сумма</th>
+                                            <th></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for treatment in appointment.treatments %}
+                                        <tr>
+                                            <td>{{ treatment.treatment.name }}</td>
+                                            <td>{{ treatment.quantity }} {{ treatment.treatment.unit }}</td>
+                                            <td>{{ treatment.total_price }} руб.</td>
+                                            <td class="text-end">
+                                                <a href="{{ url_for('treatment_calculator', appointment_id=appointment.id) }}"
+                                                    class="btn btn-sm btn-outline-primary">
+                                                    <i class="bi bi-pencil"></i>
+                                                </a>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                                <div class="text-end fw-bold">
+                                    Итого: {{ appointment.treatments|sum(attribute='total_price') }} руб.
+                                </div>
+                            </div>
+                            {% else %}
+                            <div class="text-muted">Сначала сохраните приём, а потом добавьте назначения! </div>
+                            {% endif %}
+                        </div>
+                        <button disabled="true"
+                            href="{{ url_for('treatment_calculator', appointment_id=appointment.id if appointment else 'new', pet_id=appointment.pet.id if appointment else '') }}"
+                            class="btn btn-secondary w-100">
+                            <i class="bi bi-plus-circle"></i> Добавить назначения
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Кнопки отправки формы -->
+        <div class="d-flex justify-content-between mt-3">
+            <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Назад
+            </a>
+            <button type="submit" class="btn btn-success">
+                <i class="bi bi-check-circle"></i> Сохранить приём
+            </button>
+        </div>
+    </form>
+</div>
 
 {% block scripts %}
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
@@ -154,7 +253,7 @@
             },
             placeholder: 'Выберите животное',
             language: 'ru',
-            disabled: !$('#owner_search').val() // Отключаем, если владелец не выбран
+            disabled: !$('#owner_search').val()
         });
 
         // При изменении выбора владельца
@@ -164,10 +263,21 @@
 
             if (ownerId) {
                 petSelect.prop('disabled', false);
-                petSelect.val(null).trigger('change'); // Загружаем животных владельца
+                petSelect.val(null).trigger('change');
+                $('#pet-info').hide();
             } else {
                 petSelect.prop('disabled', true);
                 petSelect.val(null);
+                $('#pet-info').hide();
+            }
+        });
+
+        // При выборе животного
+        $('#pet_search').on('change', function () {
+            if ($(this).val()) {
+                $('#pet-info').show();
+            } else {
+                $('#pet-info').hide();
             }
         });
 
@@ -180,27 +290,17 @@
             }
         });
 
-        // Функция для получения параметров из URL
-        function getUrlParams() {
-            const urlParams = new URLSearchParams(window.location.search);
-            return {
-                date: urlParams.get('date'),
-                time: urlParams.get('time')
-            };
-        }
-
-        // Функция для автозаполнения формы данными из URL
+        // Автозаполнение даты и времени из URL
         function fillFormFromUrlParams() {
-            const params = getUrlParams();
-            if (params.date) {
-                $('#date').val(params.date);  // Заполняем поле даты
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('date')) {
+                $('#date').val(urlParams.get('date'));
             }
-            if (params.time) {
-                $('#time').val(params.time);  // Заполняем поле времени
+            if (urlParams.get('time')) {
+                $('#time').val(urlParams.get('time'));
             }
         }
 
-        // Заполняем форму при загрузке страницы
         fillFormFromUrlParams();
     });
 </script>

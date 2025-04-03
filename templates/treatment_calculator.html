@@ -1,92 +1,132 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h2>Калькулятор назначений</h2>
-<input type="hidden" id="appointment-id" value="{{ appointment_id or '' }}">
-<input type="hidden" id="initial-pet-id" value="{{ pet_id or '' }}">
+<div class="container mt-4">
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white">
+            <h2 class="mb-0"><i class="bi bi-calculator me-2"></i>Калькулятор назначений</h2>
+        </div>
+        <div class="card-body">
+            <input type="hidden" id="appointment-id" value="{{ appointment_id or '' }}">
+            <input type="hidden" id="pet-id" value="{{ pet_id or '' }}">
 
-<div id="treatment-calculator">
-    <!-- Форма для поиска и добавления назначений -->
-    <div class="treatment-entry mb-3">
-        <div class="row g-3">
-            <div class="col-md-5">
-                <label for="treatment_search" class="form-label">Назначение</label>
-                <select class="form-select treatment-search" id="treatment_search"
-                    data-ajax-url="{{ url_for('treatment_search') }}"></select>
+            <!-- Форма добавления назначений -->
+            <div class="treatment-entry mb-4 p-3 bg-light rounded">
+                <h5 class="mb-3 text-primary"><i class="bi bi-plus-circle me-2"></i>Добавить назначение</h5>
+
+                <div class="row g-3 align-items-end">
+                    <!-- Поиск назначения -->
+                    <div class="col-md-6">
+                        <label for="treatment_search" class="form-label fw-bold">Выберите назначение</label>
+                        <select class="form-select treatment-search" id="treatment_search"
+                            data-ajax-url="{{ url_for('treatment_search') }}"></select>
+                        <small class="text-muted">Начните вводить название препарата или процедуры</small>
+                    </div>
+
+                    <!-- Количество -->
+                    <div class="col-md-2">
+                        <label for="quantity" class="form-label fw-bold">Количество</label>
+                        <input type="number" step="0.1" min="0.1" class="form-control quantity" id="quantity" value="1"
+                            placeholder="1.0">
+                    </div>
+
+                    <!-- Информация о препарате -->
+                    <div class="col-md-4">
+                        <div class="row g-2">
+                            <div class="col-4">
+                                <label class="form-label fw-bold">Дозировка</label>
+                                <input type="text" class="form-control dosage" readonly>
+                            </div>
+                            <div class="col-4">
+                                <label class="form-label fw-bold">Ед. изм.</label>
+                                <input type="text" class="form-control unit-measure" readonly>
+                            </div>
+                            <div class="col-4">
+                                <label class="form-label fw-bold">Цена</label>
+                                <input type="text" class="form-control price" readonly>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-3">
+                    <button class="btn btn-primary add-treatment">
+                        <i class="bi bi-plus-lg me-1"></i> Добавить в список
+                    </button>
+                </div>
+
+                <input type="hidden" class="treatment-id">
+                <input type="hidden" class="unit-price">
             </div>
-            <div class="col-md-1">
-                <label for="dosage" class="form-label">Кол-во</label>
-                <input type="number" class="form-control dosage" id="dosage" readonly>
+
+            <!-- Список назначений -->
+            <div class="treatment-list mb-4">
+                <h5 class="mb-3 text-primary"><i class="bi bi-list-check me-2"></i>Список назначений</h5>
+
+                {% if treatments %}
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Назначение</th>
+                                <th class="text-center">Кол-во</th>
+                                <th class="text-center">Ед. изм.</th>
+                                <th class="text-end">Цена</th>
+                                <th class="text-end">Сумма</th>
+                                <th class="text-center">Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody id="treatments-table">
+                            {% for treatment in treatments %}
+                            <tr class="treatment-row" data-id="{{ treatment.id }}">
+                                <td>{{ treatment.name }}</td>
+                                <td class="text-center">{{ treatment.quantity }}</td>
+                                <td class="text-center">{{ treatment.unit }}</td>
+                                <td class="text-end">{{ treatment.price }} ₽</td>
+                                <td class="text-end row-total">{{ treatment.total }} ₽</td>
+                                <td class="text-center">
+                                    <button class="btn btn-sm btn-outline-danger remove-treatment" title="Удалить">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle me-2"></i>Пока нет добавленных назначений
+                </div>
+                {% endif %}
             </div>
-            <div class="col-md-1">
-                <label for="unit_measure" class="form-label">Ед. изм.</label>
-                <input type="text" class="form-control unit-measure" id="unit_measure" readonly>
+
+            <!-- Итоговая сумма -->
+            <div class="total-price mb-4 p-3 bg-light rounded">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">Итого к оплате:</h4>
+                    <h3 class="mb-0 text-primary" id="total-amount">0.00 ₽</h3>
+                </div>
             </div>
-            <div class="col-md-2">
-                <label for="quantity" class="form-label">Итого</label>
-                <input type="number" step="0.1" min="0.1" class="form-control quantity" id="quantity"
-                    placeholder="Кол-во" value="1">
-            </div>
-            <div class="col-md-2">
-                <label for="price" class="form-label">Цена</label>
-                <input type="text" class="form-control price" id="price" readonly>
+
+            <!-- Кнопки управления -->
+            <div class="d-flex justify-content-between">
+                <a href="{% if appointment_id %}/appointment/{{ appointment_id }}{% else %}/appointments{% endif %}"
+                    class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-1"></i> Назад
+                </a>
+
+                <button id="save-btn" class="btn btn-success" {% if not treatments %}disabled{% endif %}>
+                    <i class="bi bi-check-circle me-1"></i>
+                    {% if appointment_id %}Сохранить изменения{% else %}Создать приём{% endif %}
+                </button>
             </div>
         </div>
-        <input type="hidden" class="treatment-id">
-        <input type="hidden" class="unit-price">
     </div>
-
-    <button class="btn btn-primary add-treatment mb-3">Добавить назначение</button>
-
-    <!-- Список добавленных назначений -->
-    <div class="treatment-list mb-3">
-        <table class="table">
-            <thead>
-                <tr>
-                    <th>Назначение</th>
-                    <th>Ед. изм.</th>
-                    <th>Кол-во</th>
-                    <th>Цена</th>
-                    <th>Сумма</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody id="treatments-table">
-                {% if treatments %}
-                {% for treatment in treatments %}
-                <tr class="treatment-row" data-id="{{ treatment.id }}">
-                    <td>{{ treatment.name }}</td>
-                    <td>{{ treatment.unit }}</td>
-                    <td>{{ treatment.quantity }}</td>
-                    <td>{{ treatment.price }}</td>
-                    <td class="row-total">{{ treatment.total }}</td>
-                    <td><button class="btn btn-sm btn-danger remove-treatment">×</button></td>
-                </tr>
-                {% endfor %}
-                {% endif %}
-            </tbody>
-        </table>
-    </div>
-
-    <!-- Итоговая сумма -->
-    <div class="total-price mb-3">
-        <h4>Итого: <span id="total-amount">0</span> руб.</h4>
-    </div>
-
-    <!-- Поиск питомца -->
-    <div class="pet-search mb-3">
-        <h4>Привязать к карточке питомца</h4>
-        <select class="form-select" id="pet_search" data-ajax-url="{{ url_for('pet_search') }}"></select>
-        <input type="hidden" id="pet-id" value="{{ pet_id or '' }}">
-    </div>
-
-    <button id="save-btn" class="btn btn-success" {% if not treatments %}disabled{% endif %}>
-        {% if appointment_id and appointment_id != 'new' %}Обновить{% else %}Сохранить{% endif %} назначения
-    </button>
-</div>
 </div>
 
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
 <script>
@@ -105,7 +145,7 @@
                         results: $.map(data, function (item) {
                             return {
                                 id: item.id,
-                                text: `${item.name} (${item.dosage || '—'}) - ${item.price} руб./${item.unit}`,
+                                text: `${item.name} (${item.dosage || '—'}) - ${item.price} ₽/${item.unit}`,
                                 price: item.price,
                                 measure: item.unit,
                                 name: item.name,
@@ -117,8 +157,9 @@
                 cache: true
             },
             minimumInputLength: 2,
-            placeholder: 'Начните вводить название назначения',
-            language: 'ru'
+            placeholder: 'Например: "Амоксициллин" или "Капельница"',
+            language: 'ru',
+            width: '100%'
         });
 
         // При выборе назначения заполняем поля
@@ -128,58 +169,8 @@
             $('.unit-price').val(data.price);
             $('.unit-measure').val(data.measure);
             $('.dosage').val(data.dosage);
-            $('.price').val(data.price);
-        });
-
-        // Инициализация Select2 для поиска питомцев
-        const petSelect = $('#pet_search').select2({
-            ajax: {
-                url: $('#pet_search').data('ajax-url'),
-                dataType: 'json',
-                delay: 250,
-                data: function (params) {
-                    return { term: params.term };
-                },
-                processResults: function (data) {
-                    return {
-                        results: $.map(data, function (item) {
-                            return {
-                                id: item.id,
-                                text: `${item.name} (${item.card_number}) - ${item.owner.name}`
-                            }
-                        })
-                    };
-                },
-                cache: true
-            },
-            minimumInputLength: 2,
-            placeholder: 'Поиск по кличке или номеру карты',
-            language: 'ru'
-        });
-
-        const initialPetId = $('#initial-pet-id').val();
-        if (initialPetId) {
-            $.ajax({
-                url: '/api/pets_by_owner',
-                data: { owner_id: 'any', term: '' }, // Фиктивный запрос
-                dataType: 'json',
-                success: function (data) {
-                    const pet = data.find(p => p.id == initialPetId);
-                    if (pet) {
-                        const option = new Option(pet.text, pet.id, true, true);
-                        petSelect.append(option).trigger('change');
-                        $('#pet-id').val(pet.id);
-                        $('#save-btn').prop('disabled', false);
-                    }
-                }
-            });
-        }
-
-
-        // При выборе питомца
-        $('#pet_search').on('select2:select', function (e) {
-            $('#pet-id').val(e.params.data.id);
-            $('#save-btn').prop('disabled', false);
+            $('.price').val(data.price + ' ₽');
+            $('.quantity').focus();
         });
 
         // Добавление назначения в таблицу
@@ -189,31 +180,42 @@
             const quantity = parseFloat($('.quantity').val()) || 1;
             const unitPrice = parseFloat($('.unit-price').val()) || 0;
             const unitMeasure = $('.unit-measure').val();
-            const dosage = $('.dosage').val();
+            const dosage = parseFloat($('.dosage').val()) || 1;
 
             if (treatmentId && treatmentName && !isNaN(quantity) && quantity > 0) {
-                const total = quantity * unitPrice / dosage;
+                const total = (quantity * unitPrice / dosage).toFixed(2);
 
                 const row = `
                 <tr class="treatment-row" data-id="${treatmentId}">
                     <td>${treatmentName}</td>
-                    <td>${unitMeasure}</td>
-                    <td>${quantity}</td>
-                    <td>${unitPrice.toFixed(2)}</td>
-                    <td class="row-total">${total.toFixed(2)}</td>
-                    <td><button class="btn btn-sm btn-danger remove-treatment">×</button></td>
+                    <td class="text-center">${quantity}</td>
+                    <td class="text-center">${unitMeasure}</td>
+                    <td class="text-end">${unitPrice.toFixed(2)} ₽</td>
+                    <td class="text-end row-total">${total} ₽</td>
+                    <td class="text-center">
+                        <button class="btn btn-sm btn-outline-danger remove-treatment" title="Удалить">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </td>
                 </tr>`;
 
-                $('#treatments-table').append(row);
+                if ($('#treatments-table').children().length === 0) {
+                    $('#treatments-table').html(row);
+                } else {
+                    $('#treatments-table').append(row);
+                }
+
                 updateTotal();
+                showToast('Назначение добавлено', 'success');
 
                 // Очищаем форму
                 $('#treatment_search').val(null).trigger('change');
                 $('.quantity').val('1');
-                $('.unit-measure, .price').val('');
+                $('.unit-measure, .price, .dosage').val('');
                 $('.treatment-id, .unit-price').val('');
+                $('#treatment_search').select2('focus');
             } else {
-                alert('Заполните все поля корректно!');
+                showToast('Заполните все поля корректно', 'danger');
             }
         });
 
@@ -221,40 +223,57 @@
         $(document).on('click', '.remove-treatment', function () {
             $(this).closest('tr').remove();
             updateTotal();
+            showToast('Назначение удалено', 'warning');
         });
 
-        // Функция обновления итоговой суммы
+        // Обновление итоговой суммы
         function updateTotal() {
             let total = 0;
             $('.treatment-row').each(function () {
                 total += parseFloat($(this).find('.row-total').text());
             });
-            $('#total-amount').text(total.toFixed(2));
+            $('#total-amount').text(total.toFixed(2) + ' ₽');
+            $('#save-btn').prop('disabled', total <= 0);
 
-            // Активируем кнопку сохранения если есть назначения
-            $('#save-btn').prop('disabled', total <= 0 || !$('#pet-id').val());
+            // Обновляем таблицу, если нет назначений
+            if ($('.treatment-row').length === 0) {
+                $('#treatments-table').html('<tr><td colspan="6" class="text-center text-muted">Нет назначений</td></tr>');
+            }
         }
 
+        // Всплывающие уведомления
+        function showToast(message, type) {
+            const toast = $(`
+                <div class="toast align-items-center text-white bg-${type} border-0 show" role="alert" aria-live="assertive" aria-atomic="true">
+                    <div class="d-flex">
+                        <div class="toast-body">
+                            ${message}
+                        </div>
+                        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                    </div>
+                </div>
+            `);
+
+            $('#toast-container').append(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        // Сохранение назначений
         $('#save-btn').click(function () {
-            const petId = $('#pet-id').val();
             const appointmentId = $('#appointment-id').val();
+            const petId = $('#pet-id').val();
             const treatments = [];
 
             $('.treatment-row').each(function () {
                 treatments.push({
                     id: $(this).data('id'),
-                    quantity: parseFloat($(this).find('td').eq(2).text()),
+                    quantity: parseFloat($(this).find('td').eq(1).text()),
                     total: parseFloat($(this).find('.row-total').text())
                 });
             });
 
-            if (!petId) {
-                alert('Выберите питомца!');
-                return;
-            }
-
             if (treatments.length === 0) {
-                alert('Добавьте хотя бы одно назначение!');
+                showToast('Добавьте хотя бы одно назначение', 'danger');
                 return;
             }
 
@@ -268,22 +287,36 @@
                     pet_id: petId,
                     treatments: treatments
                 }),
+                beforeSend: function () {
+                    $('#save-btn').prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Сохранение...');
+                },
                 success: function (response) {
                     if (response.success) {
-                        if (appointmentId) {
-                            window.location.href = `/appointment/${appointmentId}`;
-                        } else {
-                            window.location.href = '/appointments';
-                        }
+                        showToast('Назначения успешно сохранены', 'success');
+                        setTimeout(() => {
+                            if (appointmentId) {
+                                window.location.href = `/appointment/${appointmentId}`;
+                            } else {
+                                window.location.href = '/appointments';
+                            }
+                        }, 1500);
                     } else {
-                        alert('Ошибка сохранения: ' + (response.error || 'Неизвестная ошибка'));
+                        showToast('Ошибка сохранения: ' + (response.error || 'Неизвестная ошибка'), 'danger');
+                        $('#save-btn').prop('disabled', false).html('<i class="bi bi-check-circle me-1"></i> Сохранить');
                     }
                 },
                 error: function (xhr) {
-                    alert('Ошибка сервера: ' + xhr.responseText);
+                    showToast('Ошибка сервера: ' + xhr.responseText, 'danger');
+                    $('#save-btn').prop('disabled', false).html('<i class="bi bi-check-circle me-1"></i> Сохранить');
                 }
             });
         });
+
+        // Контейнер для уведомлений
+        $('body').append('<div id="toast-container" class="position-fixed bottom-0 end-0 p-3" style="z-index: 11"></div>');
+
+        // Инициализация обновления
+        updateTotal();
     });
 </script>
 {% endblock %}
