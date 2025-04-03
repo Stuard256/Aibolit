@@ -1,58 +1,152 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="container mt-4">
-    <h2>Добавить новое назначение</h2>
-
-    <div class="row">
-        <div class="col-md-6">
-            <form method="POST" action="{{ url_for('add_treatment') }}">
-                {{ form.hidden_tag() }}
-
-                <div class="mb-3">
-                    {{ form.name.label(class="form-label") }}
-                    {{ form.name(class="form-control") }}
-                    {% for error in form.name.errors %}
-                    <div class="text-danger">{{ error }}</div>
-                    {% endfor %}
-                </div>
-
-                <div class="mb-3">
-                    {{ form.category.label(class="form-label") }}
-                    {{ form.category(class="form-select") }}
-                </div>
-
-                <div class="row mb-3">
-                    <div class="col-md-6">
-                        {{ form.dosage.label(class="form-label") }}
-                        {{ form.dosage(class="form-control") }}
-                    </div>
-                    <div class="col-md-6">
-                        {{ form.unit.label(class="form-label") }}
-                        {{ form.unit(class="form-control") }}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-primary text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h4 class="mb-0">
+                            <i class="bi bi-plus-circle me-2"></i>Добавить новое назначение
+                        </h4>
+                        <a href="{{ url_for('list_treatments') }}" class="btn btn-light btn-sm">
+                            <i class="bi bi-arrow-left me-1"></i>Назад к списку
+                        </a>
                     </div>
                 </div>
 
-                <div class="mb-3">
-                    {{ form.price.label(class="form-label") }}
-                    <div class="input-group">
-                        {{ form.price(class="form-control") }}
-                        <span class="input-group-text">руб.</span>
-                    </div>
-                    {% for error in form.price.errors %}
-                    <div class="text-danger">{{ error }}</div>
-                    {% endfor %}
-                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('add_treatment') }}" class="needs-validation" novalidate>
+                        {{ form.hidden_tag() }}
 
-                <div class="mb-3">
-                    {{ form.description.label(class="form-label") }}
-                    {{ form.description(class="form-control", rows=3) }}
-                </div>
+                        <!-- Название -->
+                        <div class="mb-4">
+                            <div class="form-floating">
+                                {{ form.name(class="form-control" + (" is-invalid" if form.name.errors else ""),
+                                id="nameInput", placeholder=" ") }}
+                                {{ form.name.label(class="form-label", for="nameInput") }}
+                            </div>
+                            {% for error in form.name.errors %}
+                            <div class="invalid-feedback d-block">{{ error }}</div>
+                            {% endfor %}
+                            <small class="text-muted">Укажите название препарата или процедуры</small>
+                        </div>
 
-                <button type="submit" class="btn btn-primary">Добавить назначение</button>
-                <a href="{{ url_for('list_treatments') }}" class="btn btn-secondary">Отмена</a>
-            </form>
+                        <!-- Категория и Дозировка -->
+                        <div class="row g-3 mb-4">
+                            <!-- Категория -->
+                            <div class="col-md-6">
+                                <div class="form-floating">
+                                    {{ form.category(class="form-select" + (" is-invalid" if form.category.errors else
+                                    ""),
+                                    id="categorySelect") }}
+                                    {{ form.category.label(class="form-label", for="categorySelect") }}
+                                </div>
+                            </div>
+
+                            <!-- Дозировка -->
+                            <div class="col-md-3">
+                                <div class="form-floating">
+                                    {{ form.dosage(class="form-control" + (" is-invalid" if form.dosage.errors else ""),
+                                    id="dosageInput", placeholder=" ", type="number", step="0.01") }}
+                                    {{ form.dosage.label(class="form-label", for="dosageInput") }}
+                                </div>
+                            </div>
+
+                            <!-- Единица измерения -->
+                            <div class="col-md-3">
+                                <div class="form-floating">
+                                    {{ form.unit(class="form-select" + (" is-invalid" if form.unit.errors else ""),
+                                    id="unitSelect") }}
+                                    {{ form.unit.label(class="form-label", for="unitSelect") }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Цена -->
+                        <div class="mb-4">
+                            <div class="form-floating">
+                                <div class="input-group">
+                                    {{ form.price(class="form-control" + (" is-invalid" if form.price.errors else ""),
+                                    id="priceInput", placeholder=" ", type="number", step="0.01") }}
+                                    <span class="input-group-text">₽</span>
+                                    {{ form.price.label(class="form-label", for="priceInput") }}
+                                </div>
+                            </div>
+                            {% for error in form.price.errors %}
+                            <div class="invalid-feedback d-block">{{ error }}</div>
+                            {% endfor %}
+                            <small class="text-muted">Укажите стоимость одной дозы/процедуры</small>
+                        </div>
+
+                        <!-- Описание -->
+                        <div class="mb-4">
+                            <div class="form-floating">
+                                {{ form.description(class="form-control" + (" is-invalid" if form.description.errors
+                                else ""),
+                                id="descriptionTextarea", placeholder=" ", style="height: 100px") }}
+                                {{ form.description.label(class="form-label", for="descriptionTextarea") }}
+                            </div>
+                            <small class="text-muted">Дополнительная информация о назначении (необязательно)</small>
+                        </div>
+
+                        <!-- Кнопки -->
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                            <a href="{{ url_for('list_treatments') }}" class="btn btn-outline-secondary me-md-2">
+                                <i class="bi bi-x-circle me-1"></i>Отмена
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-circle me-1"></i>Сохранить назначение
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
         </div>
     </div>
 </div>
+
+<style>
+    .card {
+        border-radius: 0.5rem;
+        overflow: hidden;
+    }
+
+    .form-floating>label {
+        color: #6c757d;
+    }
+
+    .form-control:focus,
+    .form-select:focus {
+        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.15);
+    }
+
+    .input-group-text {
+        background-color: #f8f9fa;
+    }
+</style>
+
+<script>
+    // Валидация форм
+    (function () {
+        'use strict'
+
+        // Получаем все формы, к которым нужно применить кастомную валидацию Bootstrap
+        var forms = document.querySelectorAll('.needs-validation')
+
+        // Перебираем их и предотвращаем отправку
+        Array.prototype.slice.call(forms)
+            .forEach(function (form) {
+                form.addEventListener('submit', function (event) {
+                    if (!form.checkValidity()) {
+                        event.preventDefault()
+                        event.stopPropagation()
+                    }
+
+                    form.classList.add('was-validated')
+                }, false)
+            })
+    })()
+</script>
 {% endblock %}

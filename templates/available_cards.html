@@ -1,33 +1,88 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="container mt-4">
-    <h2>Свободные номера карточек</h2>
-    <p>Минимальный номер: {{ min_number }}, Максимальный номер: {{ max_number }}</p>
-    <div class="mt-3">
-        <a href="{{ url_for('add_pet') }}" class="btn btn-primary">
-            <i class="fas fa-plus"></i> Добавить животное
-        </a>
-    </div>
-    <div class="mt-3">
-        <a href="{{ url_for('add_owner') }}" class="btn btn-primary">
-            <i class="fas fa-plus"></i> Добавить владельца
-        </a>
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-0">
+                <i class="bi bi-card-list me-2"></i>Свободные номера карточек
+            </h2>
+            <p class="text-muted mb-0">
+                Диапазон: от <span class="fw-bold">{{ min_number }}</span> до <span class="fw-bold">{{ max_number
+                    }}</span>
+            </p>
+        </div>
+
+        <div class="btn-group">
+            <a href="{{ url_for('add_pet') }}" class="btn btn-primary" target="_blank">
+                <i class="bi bi-plus-circle me-1"></i> Добавить животное
+            </a>
+            <a href="{{ url_for('add_owner') }}" class="btn btn-outline-primary" target="_blank">
+                <i class="bi bi-person-plus me-1"></i> Добавить владельца
+            </a>
+        </div>
     </div>
 
-    <div class="card mt-3">
-        <div class="card-header">
-            <h5>Доступные номера</h5>
+    <div class="card shadow-sm">
+        <div class="card-header bg-light">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="bi bi-check2-circle me-2"></i>Доступные номера карточек
+                </h5>
+                <span class="badge bg-primary rounded-pill">
+                    {{ available_numbers|length }} свободных
+                </span>
+            </div>
         </div>
+
         <div class="card-body">
-            <div class="row">
+            {% if available_numbers %}
+            <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-5 row-cols-xl-6 g-2">
                 {% for number in available_numbers %}
-                <div class="col-md-2 col-sm-3 col-4 mb-2">
-                    <span class="badge bg-success">{{ number }}</span>
+                <div class="col">
+                    <a href="{{ url_for('add_pet', card_number=number) }}" target="_blank"
+                        class="card-number d-block text-decoration-none p-3 text-center rounded border hover-shadow"
+                        title="Создать карточку с номером {{ number }}">
+                        <span class="fs-4 fw-bold">{{ number }}</span>
+                        <div class="text-muted small mt-1">Свободен</div>
+                    </a>
                 </div>
                 {% endfor %}
             </div>
+            {% else %}
+            <div class="alert alert-warning mb-0">
+                <i class="bi bi-exclamation-triangle me-2"></i>Нет доступных номеров карточек
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="card-footer bg-light">
+            <small class="text-muted">
+                Нажмите на номер, чтобы создать карточку животного с этим номером (откроется в новой вкладке)
+            </small>
         </div>
     </div>
 </div>
+
+<style>
+    .card-number {
+        transition: all 0.2s ease;
+        background-color: #f8f9fa;
+        color: #212529;
+    }
+
+    .card-number:hover {
+        background-color: #e9ecef;
+        transform: translateY(-2px);
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);
+    }
+
+    .hover-shadow {
+        transition: box-shadow 0.2s ease;
+    }
+
+    .hover-shadow:hover {
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);
+    }
+</style>
 {% endblock %}

@@ -2,11 +2,10 @@
 
 {% block content %}
 <div class="container mt-4">
-    <h2>Список назначений</h2>
-
-    <div class="mb-3">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0"><i class="bi bi-prescription2 me-2"></i>Список назначений</h2>
         <a href="{{ url_for('add_treatment') }}" class="btn btn-success">
-            <i class="bi bi-plus-circle"></i> Добавить новое
+            <i class="bi bi-plus-circle me-2"></i>Добавить назначение
         </a>
     </div>
 
@@ -21,77 +20,158 @@
     {% endif %}
     {% endwith %}
 
-    <div class="table-responsive">
-        <table class="table table-striped">
-            <thead>
-                <tr>
-                    <th>Название</th>
-                    <th>Категория</th>
-                    <th>Дозировка</th>
-                    <th>Цена</th>
-                    <th>Описание</th>
-                    <th>Действия</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for treatment in treatments %}
-                <tr>
-                    <td>{{ treatment.name }}</td>
-                    <td>
-                        {% if treatment.category == 'vaccine' %}Вакцина
-                        {% elif treatment.category == 'medicine' %}Лекарство
-                        {% elif treatment.category == 'procedure' %}Процедура
-                        {% else %}Другое{% endif %}
-                    </td>
-                    <td>{{ treatment.dosage }} {{ treatment.unit }}</td>
-                    <td>{{ "%.2f"|format(treatment.price) }} руб.</td>
-                    <td>{{ treatment.description|default('', true) }}</td>
-                    <td>
-                        <div class="btn-group" role="group">
-                            <a href="{{ url_for('edit_treatment', treatment_id=treatment.id) }}"
-                                class="btn btn-sm btn-warning">
-                                <i class="bi bi-pencil"></i> Редактировать
-                            </a>
-                            <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal"
-                                data-bs-target="#deleteModal{{ treatment.id }}">
-                                <i class="bi bi-trash"></i> Удалить
-                            </button>
-                        </div>
+    <!-- Category Filter -->
+    <div class="card mb-4 shadow-sm">
+        <div class="card-header bg-light">
+            <h5 class="mb-0"><i class="bi bi-funnel me-2"></i>Фильтр по категориям</h5>
+        </div>
+        <div class="card-body">
+            <div class="d-flex flex-wrap gap-2">
+                <a href="{{ url_for('list_treatments') }}"
+                    class="btn btn-outline-primary {% if not active_category %}active{% endif %}">
+                    Все категории
+                </a>
+                {% for category in categories %}
+                <a href="{{ url_for('list_treatments', category=category) }}"
+                    class="btn btn-outline-primary {% if active_category == category %}active{% endif %}">
+                    {{ category }}
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
 
-                        <!-- Modal for Delete Confirmation -->
-                        <div class="modal fade" id="deleteModal{{ treatment.id }}" tabindex="-1"
-                            aria-labelledby="deleteModalLabel{{ treatment.id }}" aria-hidden="true">
-                            <div class="modal-dialog">
-                                <div class="modal-content">
-                                    <div class="modal-header">
-                                        <h5 class="modal-title" id="deleteModalLabel{{ treatment.id }}">Подтверждение
-                                            удаления</h5>
-                                        <button type="button" class="btn-close" data-bs-dismiss="modal"
-                                            aria-label="Close"></button>
-                                    </div>
-                                    <div class="modal-body">
-                                        Вы уверены, что хотите удалить назначение "{{ treatment.name }}"?
-                                    </div>
-                                    <div class="modal-footer">
-                                        <button type="button" class="btn btn-secondary"
-                                            data-bs-dismiss="modal">Отмена</button>
-                                        <form action="{{ url_for('delete_treatment_id', treatment_id=treatment.id) }}"
-                                            method="POST">
-                                            <button type="submit" class="btn btn-danger">Удалить</button>
-                                        </form>
+    <!-- Treatments Table -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="bi bi-list-ul me-2"></i>Список назначений</h5>
+            <span class="badge bg-primary rounded-pill">{{ treatments|length }} записей</span>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th><i class="bi bi-card-heading me-1"></i>Название</th>
+                        <th><i class="bi bi-tags me-1"></i>Категория</th>
+                        <th><i class="bi bi-droplet me-1"></i>Дозировка</th>
+                        <th><i class="bi bi-currency-ruble me-1"></i>Цена</th>
+                        <th><i class="bi bi-card-text me-1"></i>Описание</th>
+                        <th><i class="bi bi-gear me-1"></i>Действия</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for treatment in treatments %}
+                    <tr>
+                        <td class="fw-bold">{{ treatment.name }}</td>
+                        <td>
+                            <span class="badge bg-info text-dark">{{ treatment.category }}</span>
+                        </td>
+                        <td>
+                            <span class="badge bg-light text-dark border">
+                                {{ treatment.dosage }} {{ treatment.unit }}
+                            </span>
+                        </td>
+                        <td class="text-success fw-bold">{{ "%.2f"|format(treatment.price) }} ₽</td>
+                        <td>
+                            {% if treatment.description %}
+                            <span class="d-inline-block text-truncate" style="max-width: 200px;"
+                                data-bs-toggle="tooltip" title="{{ treatment.description }}">
+                                {{ treatment.description }}
+                            </span>
+                            {% else %}
+                            <span class="text-muted">Нет описания</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="d-flex gap-2">
+                                <a href="{{ url_for('edit_treatment', treatment_id=treatment.id) }}"
+                                    class="btn btn-sm btn-outline-primary" data-bs-toggle="tooltip"
+                                    title="Редактировать">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal"
+                                    data-bs-target="#deleteModal{{ treatment.id }}" data-bs-toggle="tooltip"
+                                    title="Удалить">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+
+                            <!-- Delete Modal -->
+                            <div class="modal fade" id="deleteModal{{ treatment.id }}" tabindex="-1"
+                                aria-labelledby="deleteModalLabel{{ treatment.id }}" aria-hidden="true">
+                                <div class="modal-dialog">
+                                    <div class="modal-content">
+                                        <div class="modal-header bg-danger text-white">
+                                            <h5 class="modal-title" id="deleteModalLabel{{ treatment.id }}">
+                                                <i class="bi bi-exclamation-triangle me-2"></i>Подтверждение удаления
+                                            </h5>
+                                            <button type="button" class="btn-close btn-close-white"
+                                                data-bs-dismiss="modal" aria-label="Close"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <p>Вы собираетесь удалить назначение:</p>
+                                            <div class="alert alert-warning">
+                                                <strong>{{ treatment.name }}</strong><br>
+                                                Категория: {{ treatment.category }}<br>
+                                                Дозировка: {{ treatment.dosage }} {{ treatment.unit }}
+                                            </div>
+                                            <p class="text-danger">Это действие нельзя отменить!</p>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i
+                                                    class="bi bi-x-circle me-2"></i>Отмена</button>
+                                            <form
+                                                action="{{ url_for('delete_treatment_id', treatment_id=treatment.id) }}"
+                                                method="POST">
+                                                <button type="submit" class="btn btn-danger">
+                                                    <i class="bi bi-trash me-2"></i>Удалить
+                                                </button>
+                                            </form>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    </td>
-                </tr>
-                {% else %}
-                <tr>
-                    <td colspan="6" class="text-center">Нет доступных назначений</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="text-center py-4">
+                            <i class="bi bi-inbox" style="font-size: 2rem; opacity: 0.5;"></i>
+                            <p class="mt-2 text-muted">Нет доступных назначений</p>
+                            <a href="{{ url_for('add_treatment') }}" class="btn btn-primary mt-2">
+                                <i class="bi bi-plus-circle me-2"></i>Добавить первое назначение
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% if treatments %}
+        <div class="card-footer bg-light">
+            <small class="text-muted">Показано {{ treatments|length }} из {{ treatments|length }} назначений</small>
+        </div>
+        {% endif %}
     </div>
 </div>
+
+<style>
+    .table-hover tbody tr:hover {
+        background-color: rgba(13, 110, 253, 0.05);
+    }
+
+    .badge.bg-light {
+        color: #495057 !important;
+    }
+</style>
+
+<script>
+    // Enable tooltips
+    document.addEventListener('DOMContentLoaded', function () {
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl)
+        })
+    })
+</script>
 {% endblock %}

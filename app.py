@@ -341,41 +341,62 @@ def pet_search():
 
 @app.route('/save_treatments', methods=['POST'])
 def save_treatments():
-    data = request.json
-    pet_id = data.get('pet_id')
-    treatments = data.get('treatments')
-    
-    if not pet_id:
-        return jsonify({'error': 'Не выбран питомец'}), 400
-    
     try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+
+        pet_id = data.get('pet_id')
+        treatments = data.get('treatments', [])
+        
+        if not pet_id:
+            return jsonify({'error': 'Не выбран питомец'}), 400
+        
+        if not treatments:
+            return jsonify({'error': 'Нет назначений для сохранения'}), 400
+
         # Создаем новый прием
         appointment = Appointment(
-            appointment_date=datetime.now().strftime('%Y-%m-%d'),
-            time=datetime.now().strftime('%H:%M'),
+            appointment_date=datetime.now().date(),
+            time=datetime.now().time(),
             pet_id=pet_id,
             owner_id=Pet.query.get(pet_id).owner_id,
-            description="Назначения из калькулятора"
+            description="Назначения из калькулятора",
+            created_at=datetime.now()
         )
         db.session.add(appointment)
         db.session.flush()  # Получаем ID нового приема
         
         # Добавляем назначения
         for treatment in treatments:
+            # Проверяем существование лечения
+            if not Treatment.query.get(treatment['id']):
+                app.logger.warning(f"Лечение с ID {treatment['id']} не найдено")
+                continue
+                
             at = AppointmentTreatment(
                 appointment_id=appointment.id,
                 treatment_id=treatment['id'],
-                quantity=treatment['quantity'],
-                total_price=treatment['total'],
-                notes=treatment.get('notes', '')
-            )   
+                quantity=treatment.get('quantity', 1),
+                total_price=treatment.get('total', 0),
+                notes=treatment.get('notes', ''),
+                created_at=datetime.now()
+            )
             db.session.add(at)
         
         db.session.commit()
-        return jsonify({'success': True})
+        
+        app.logger.info(f"Сохранено {len(treatments)} назначений для приема {appointment.id}")
+        return jsonify({
+            'success': True,
+            'appointment_id': appointment.id
+        })
+        
     except Exception as e:
         db.session.rollback()
-        return jsonify({'error': str(e)}), 500
+        error_msg = f'Ошибка сохранения назначений: {str(e)}'
+        app.logger.error(error_msg, exc_info=True)
+        return jsonify({'error': error_msg}), 500
     
 
 @app.route('/add_treatment', methods=['GET', 'POST'])
@@ -384,6 +405,18 @@ def add_treatment():
     
     if form.validate_on_submit():
         try:
+            # Проверяем, существует ли уже такое назначение
+            existing_treatment = Treatment.query.filter_by(
+                name=form.name.data,
+                category=form.category.data,
+                dosage=form.dosage.data,
+                unit=form.unit.data
+            ).first()
+            
+            if existing_treatment:
+                flash('Такое назначение уже существует!', 'warning')
+                return redirect(url_for('add_treatment'))
+            
             treatment = Treatment(
                 name=form.name.data,
                 category=form.category.data,
@@ -392,20 +425,38 @@ def add_treatment():
                 price=form.price.data,
                 description=form.description.data
             )
+            
             db.session.add(treatment)
             db.session.commit()
+            
             flash('Назначение успешно добавлено!', 'success')
+            app.logger.info(f"Добавлено новое назначение: {treatment.name} (ID: {treatment.id})")
             return redirect(url_for('list_treatments'))
+            
         except Exception as e:
             db.session.rollback()
-            flash(f'Ошибка при добавлении назначения: {str(e)}', 'danger')
+            error_msg = f'Ошибка при добавлении назначения: {str(e)}'
+            flash(error_msg, 'danger')
+            app.logger.error(error_msg, exc_info=True)
     
     return render_template('add_treatment.html', form=form)
 
 @app.route('/treatments')
 def list_treatments():
-    treatments = Treatment.query.order_by(Treatment.name).all()
-    return render_template('treatments.html', treatments=treatments)
+    category = request.args.get('category')
+    query = Treatment.query
+    if category and category != 'all':
+        query = query.filter(Treatment.category == category)
+    treatments = query.order_by(Treatment.category, Treatment.name).all()
+    categories = db.session.query(Treatment.category).distinct().order_by(Treatment.category).all()
+    categories = [c[0] for c in categories]
+    
+    return render_template(
+        'treatments.html',
+        treatments=treatments,
+        categories=categories,
+        active_category=category
+    )
 
 @app.route('/generate_report', methods=['POST'])
 def generate_report():
@@ -661,13 +712,6 @@ def appointment_delete(appointment_id):
     
     return redirect(url_for('index'))
 
-@app.route('/appointments')
-def appointments():
-    appointments = Appointment.query.all()
-    return render_template('appointments.html', appointments=appointments)
-
-
-
 @app.route('/appointment/new', methods=['GET', 'POST'])
 def new_appointment():
     owners = Owner.query.all()
@@ -901,13 +945,17 @@ def delete_owner(owner_id):
 # РАБОТА С КАРТОЧКАМИ ЖИВОТНЫХ
 # ================================
 
-# Добавление карточки животного (привязка к владельцу)
 @app.route('/add_pet', methods=['GET', 'POST'])
 def add_pet():
-    # Получаем список владельцев в начале функции
+    # Получаем список владельцев
     owners = Owner.query.limit(50).all()
     form_data = request.form if request.method == 'POST' else {}
     selected_owner = None
+    
+    # Получаем номер карточки из параметра URL (если есть)
+    card_number = request.args.get('card_number')
+    if card_number and request.method == 'GET':
+        form_data['card_number'] = card_number
 
     if request.method == 'POST':
         owner_id = request.form.get('owner_id')
@@ -929,17 +977,25 @@ def add_pet():
         }
 
         # Проверка на уникальность номера карточки
-        if Pet.query.filter_by(card_number=form_data['card_number']).first():
-            flash("Ошибка: животное с таким номером карточки уже существует!", 'error')
-            return render_template('add_pet.html', owners=owners, form_data=form_data)
+        existing_pet = Pet.query.filter_by(card_number=form_data['card_number']).first()
+        if existing_pet:
+            flash(f"Ошибка: животное с номером карточки {form_data['card_number']} уже существует!", 'error')
+            return render_template('add_pet.html', 
+                                owners=owners, 
+                                form_data=form_data,
+                                selected_owner=selected_owner)
 
         try:
             owner_id = int(form_data['owner_id'])
-        except ValueError:
-            flash("Неверный идентификатор владельца!", 'error')
-            return render_template('add_pet.html', owners=owners, form_data=form_data)
+            owner = Owner.query.get(owner_id)
+            if not owner:
+                flash("Владелец не найден!", 'error')
+                return render_template('add_pet.html', 
+                                     owners=owners, 
+                                     form_data=form_data,
+                                     selected_owner=selected_owner)
 
-        try:
+            # Обработка даты рождения
             birth_date_str = form_data['birth_date']
             try:
                 birth_date = datetime.strptime(birth_date_str, "%d-%m-%Y").date()
@@ -947,8 +1003,11 @@ def add_pet():
                 try:
                     birth_date = datetime.strptime(birth_date_str, "%Y-%m-%d").date()
                 except ValueError:
-                    flash("Неверный формат даты рождения.", 'error')
-                    return render_template('add_pet.html', owners=owners, form_data=form_data)
+                    flash("Неверный формат даты рождения. Используйте ДД-ММ-ГГГГ или ГГГГ-ММ-ДД", 'error')
+                    return render_template('add_pet.html', 
+                                        owners=owners, 
+                                        form_data=form_data,
+                                        selected_owner=selected_owner)
 
             new_pet = Pet(
                 owner_id=owner_id,
@@ -965,16 +1024,21 @@ def add_pet():
 
             db.session.add(new_pet)
             db.session.commit()
-            flash("Карточка животного успешно добавлена!", 'success')
+            
+            flash(f"Карточка животного №{new_pet.card_number} успешно добавлена!", 'success')
             return redirect(url_for('pet_card', pet_id=new_pet.id))
+            
         except Exception as e:
             db.session.rollback()
             flash(f"Ошибка при добавлении карточки: {str(e)}", 'error')
-            return render_template('add_pet.html', owners=owners, form_data=form_data)
+            return render_template('add_pet.html', 
+                                owners=owners, 
+                                form_data=form_data,
+                                selected_owner=selected_owner)
 
     return render_template(
         'add_pet.html',
-        owners=owners,  # Теперь переменная owners всегда определена
+        owners=owners,
         form_data=form_data,
         selected_owner=selected_owner
     )
