@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Свободные номера карточек</h2>
+    <p>Минимальный номер: {{ min_number }}, Максимальный номер: {{ max_number }}</p>
+    <div class="mt-3">
+        <a href="{{ url_for('add_pet') }}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> Добавить животное
+        </a>
+    </div>
+    <div class="mt-3">
+        <a href="{{ url_for('add_owner') }}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> Добавить владельца
+        </a>
+    </div>
+
+    <div class="card mt-3">
+        <div class="card-header">
+            <h5>Доступные номера</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                {% for number in available_numbers %}
+                <div class="col-md-2 col-sm-3 col-4 mb-2">
+                    <span class="badge bg-success">{{ number }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

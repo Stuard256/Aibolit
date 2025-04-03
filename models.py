@@ -90,28 +90,14 @@ class Treatment(db.Model):
     unit = db.Column(db.String(20), nullable=False)  # Единица измерения (мл, г, таблетка)
     price = db.Column(db.Float, nullable=False)  # Цена за единицу
     description = db.Column(db.Text)  # Дополнительное описание
-
-class TreatmentType(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable=False, unique=True)  # Например: "Вакцина", "Лекарство"
-    description = db.Column(db.Text)
-
-class TreatmentItem(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(150), nullable=False, unique=True)  # Например: "Вакцина от бешенства", "Антибиотик X"
-    treatment_type_id = db.Column(db.Integer, db.ForeignKey('treatment_type.id'), nullable=False)
-    treatment_type = db.relationship('TreatmentType', backref='items')
-    default_dosage = db.Column(db.String(50))  # Например: "1 мл", "100 мг"
-    unit_price = db.Column(db.Float, nullable=False)  # Цена за единицу
-    unit_measure = db.Column(db.String(20), nullable=False)  # Например: "мл", "г", "таблетка"
     
 class AppointmentTreatment(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     appointment_id = db.Column(db.Integer, db.ForeignKey('appointment.id'), nullable=False)
-    treatment_item_id = db.Column(db.Integer, db.ForeignKey('treatment_item.id'), nullable=False)
-    treatment_item = db.relationship('TreatmentItem')
+    treatment_id = db.Column(db.Integer, db.ForeignKey('treatment.id'), nullable=False)
+    treatment = db.relationship('Treatment')
     quantity = db.Column(db.Float, nullable=False)  # Количество единиц
-    total_price = db.Column(db.Float, nullable=False)  # quantity * unit_price
+    total_price = db.Column(db.Float, nullable=False)  # quantity * price / dosage
     notes = db.Column(db.Text)
 
 # Добавим связь в модель Appointment

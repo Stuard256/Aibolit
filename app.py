@@ -1,14 +1,22 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, make_response  
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime, date, timedelta
-from models import db, Owner, Pet, Appointment, Note, Vaccination, Treatment, TreatmentItem, TreatmentType, AppointmentTreatment  # Импортируем модели
+from models import db, Owner, Pet, Appointment, Note, Vaccination, Treatment, AppointmentTreatment  # Импортируем модели
 import logging
 import pdfkit
 from docxtpl import DocxTemplate
 import io
+import os
 from forms import TreatmentCalculatorForm , TreatmentForm
 logging.basicConfig()
 logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
+import shutil
+from datetime import datetime
+from apscheduler.schedulers.background import BackgroundScheduler
+import logging
+logging.basicConfig()
+logging.getLogger('apscheduler').setLevel(logging.DEBUG)
+
 
 config = pdfkit.configuration(wkhtmltopdf=r'C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe')
 
@@ -19,6 +27,42 @@ app.config['JSON_AS_ASCII'] = False
 app.secret_key = 'your_secret_key'  # Замените на надёжное значение
 db.init_app(app)  # Инициализируем db с Flask
 
+
+app.config['BACKUP_INTERVAL_MINUTES'] = 15
+
+def create_backup():
+    try:
+        backup_dir = os.path.join(os.path.dirname(__file__), 'database_backups')
+        os.makedirs(backup_dir, exist_ok=True)
+        
+        db_file = 'instance/vet_clinic.db'
+        
+        if not os.path.exists(db_file):
+            return {'status': 'error', 'message': 'Database file not found'}
+        
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        backup_file = os.path.join(backup_dir, f'vet_clinic_backup_{timestamp}.db')
+        
+        shutil.copy2(db_file, backup_file)
+        
+        # Удаляем старые бэкапы
+        backups = sorted(os.listdir(backup_dir), reverse=True)
+        for old_backup in backups[10:]:
+            os.remove(os.path.join(backup_dir, old_backup))
+            
+        app.logger.info(f"Backup created: {backup_file}")
+        return {'status': 'success', 'message': f'Backup created: {backup_file}'}
+    except Exception as e:
+        app.logger.error(f"Backup failed: {str(e)}")
+        return {'status': 'error', 'message': str(e)}
+
+
+def init_scheduler():
+    scheduler = BackgroundScheduler()
+    backup_interval = app.config.get('BACKUP_INTERVAL_MINUTES', 15)
+    scheduler.add_job(create_backup, 'interval', minutes= backup_interval)
+    scheduler.start()
+    return scheduler
 
 @app.route('/', methods=['GET', 'POST'])    
 def index():
@@ -37,6 +81,60 @@ def index():
     notes = Note.query.order_by(Note.timestamp.desc()).all()
     return render_template('index.html', notes=notes)
 
+@app.route('/admin')
+def admin_panel():
+    # Проверка авторизации (добавьте свою логику проверки прав)
+    # if not current_user.is_authenticated or not current_user.is_admin:
+    #     return redirect(url_for('login'))
+    
+    # Получаем время последнего бэкапа
+    backup_dir = os.path.join(os.path.dirname(__file__), 'database_backups')
+    last_backup = None
+    if os.path.exists(backup_dir):
+        backups = sorted(os.listdir(backup_dir), reverse=True)
+        if backups:
+            last_backup = datetime.fromtimestamp(os.path.getmtime(os.path.join(backup_dir, backups[0])))
+    
+    return render_template('admin.html', last_backup=last_backup)
+
+@app.route('/admin/backup', methods=['POST'])
+def manual_backup():
+    result = create_backup()
+    return jsonify(result)
+
+
+
+@app.route('/available_card_numbers')
+def available_card_numbers():
+    # Получаем все существующие номера карточек
+    used_numbers = [int(p.card_number) for p in Pet.query.with_entities(Pet.card_number).all() if p.card_number.isdigit()]
+    
+    if not used_numbers:
+        # Если нет ни одной карточки, возвращаем сообщение
+        return render_template('available_cards.html', 
+                            available_numbers=list(range(1, 100)),
+                            min_number=1,
+                            max_number=100)
+    
+    max_number = max(used_numbers)
+    min_number = 1
+    
+    # Создаем множество всех возможных номеров
+    all_numbers = set(range(min_number, max_number + 1))
+    used_numbers_set = set(used_numbers)
+    
+    # Находим свободные номера
+    available_numbers = sorted(all_numbers - used_numbers_set)
+    
+    # Добавляем следующий номер после максимального
+    next_number = max_number + 1
+    available_numbers.append(next_number)
+    
+    return render_template('available_cards.html', 
+                         available_numbers=available_numbers,
+                         min_number=min_number,
+                         max_number=max_number)
+
 @app.route('/treatment_calculator', methods=['GET', 'POST'])
 def treatment_calculator():
     form = TreatmentCalculatorForm()
@@ -48,15 +146,15 @@ def treatment_calculator():
         if 'treatment_search' in request.form:
             # Поиск назначений
             search_term = request.form['treatment_search']
-            treatments_found = TreatmentItem.query.filter(
-                TreatmentItem.name.ilike(f'%{search_term}%')
+            treatments_found = Treatment.query.filter(
+                Treatment.name.ilike(f'%{search_term}%')
             ).limit(10).all()
             return jsonify([{
                 'id': t.id,
                 'name': t.name,
-                'default_dosage': t.default_dosage,
-                'unit_price': t.unit_price,
-                'unit_measure': t.unit_measure
+                'dosage': t.dosage,
+                'price': t.price,
+                'unit': t.unit
             } for t in treatments_found])
         
         elif 'add_treatment' in request.form:
@@ -64,15 +162,15 @@ def treatment_calculator():
             treatment_id = request.form.get('treatment_id')
             quantity = float(request.form.get('quantity', 1))
             
-            treatment = TreatmentItem.query.get(treatment_id)
+            treatment = Treatment.query.get(treatment_id)
             if treatment:
                 treatments.append({
                     'id': treatment.id,
                     'name': treatment.name,
                     'quantity': quantity,
-                    'unit_price': treatment.unit_price,
-                    'unit_measure': treatment.unit_measure,
-                    'total': quantity * treatment.unit_price
+                    'price': treatment.price,
+                    'unit': treatment.unit,
+                    'total': quantity * treatment.price / treatment.dosage
                 })
                 total = sum(t['total'] for t in treatments)
     
@@ -937,5 +1035,7 @@ def reset_db():
 # ================================
 # ЗАПУСК ПРИЛОЖЕНИЯ
 # ================================
+
+scheduler = init_scheduler()
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

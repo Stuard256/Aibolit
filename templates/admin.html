@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Администрирование</h2>
+
+    <div class="card mt-3">
+        <div class="card-header">
+            <h5>Резервное копирование базы данных</h5>
+        </div>
+        <div class="card-body">
+            <p>Последнее резервное копирование: <span id="lastBackupTime">Неизвестно</span></p>
+            <button id="backupBtn" class="btn btn-primary">
+                <i class="fas fa-database"></i> Создать резервную копию сейчас
+            </button>
+            <div id="backupStatus" class="mt-2"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.getElementById('backupBtn').addEventListener('click', function () {
+        const btn = this;
+        const statusDiv = document.getElementById('backupStatus');
+
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Создание копии...';
+        statusDiv.innerHTML = '';
+
+        fetch('/admin/backup', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    statusDiv.innerHTML = `<div class="alert alert-success">${data.message}</div>`;
+                    // Обновляем время последнего бэкапа
+                    document.getElementById('lastBackupTime').textContent = new Date().toLocaleString();
+                } else {
+                    statusDiv.innerHTML = `<div class="alert alert-danger">Ошибка: ${data.message || 'Неизвестная ошибка'}</div>`;
+                }
+            })
+            .catch(error => {
+                statusDiv.innerHTML = `<div class="alert alert-danger">Ошибка сети: ${error.message}</div>`;
+            })
+            .finally(() => {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-database"></i> Создать резервную копию сейчас';
+            });
+    });
+</script>
+{% endblock %}
