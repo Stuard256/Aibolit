@@ -4,126 +4,183 @@
 <h2>{% if appointment %}Редактирование приёма{% else %}Новый приём{% endif %}</h2>
 
 <form method="POST">
-
-    <input type="hidden" id="selected_date" name="selected_date">
-    <input type="hidden" id="selected_time" name="selected_time">
     <!-- Дата и время приёма -->
     <div class="mb-3">
         <label for="date" class="form-label">Дата</label>
-        <input type="date" class="form-control" id="date" name="date" value="{{ appointment.appointment_date if appointment else '' }}" required>
+        <input type="date" class="form-control" id="date" name="date"
+            value="{{ appointment.appointment_date if appointment else '' }}" required>
     </div>
     <div class="mb-3">
         <label for="time" class="form-label">Время</label>
-        <input type="time" class="form-control" id="time" name="time" value="{{ appointment.time if appointment else '' }}" required>
+        <input type="time" class="form-control" id="time" name="time"
+            value="{{ appointment.time if appointment else '' }}" required>
     </div>
 
     <!-- Описание приёма -->
     <div class="mb-3">
         <label for="description" class="form-label">Описание</label>
-        <textarea class="form-control" id="description" name="description" rows="3" required>{{ appointment.description if appointment else '' }}</textarea>
+        <textarea class="form-control" id="description" name="description" rows="3"
+            required>{{ appointment.description if appointment else '' }}</textarea>
     </div>
 
-    <!-- Выбор владельца и животного -->
+    <!-- Выбор владельца и животного с поиском -->
     <div class="mb-3">
-        <label for="owner" class="form-label">Владелец</label>
-        <select class="form-control" id="owner" name="owner" required onchange="updatePets()">
-            <option value="" disabled {% if not appointment %}selected{% endif %}>Выберите владельца</option>
-            {% for owner in owners %}
-            <option value="{{ owner.id }}" {% if appointment and owner.id == appointment.owner_id %}selected{% endif %}>{{ owner.name }}</option>
-            {% endfor %}
+        <label for="owner_search" class="form-label">Владелец:</label>
+        <select class="form-select" id="owner_search" name="owner_id" required
+            data-ajax-url="{{ url_for('search_owners') }}">
+            {% if appointment %}
+            <option value="{{ appointment.owner.id }}" selected>
+                {{ appointment.owner.name }}
+            </option>
+            {% endif %}
         </select>
     </div>
 
     <div class="mb-3">
-        <label for="pet" class="form-label">Животное</label>
-        <select class="form-control" id="pet" name="pet" required>
-            <option value="" disabled {% if not appointment %}selected{% endif %}>Выберите животное</option>
-            {% for pet in pets %}
-            <option value="{{ pet.id }}" {% if appointment and pet.id == appointment.pet_id %}selected{% endif %} class="pet-option owner-{{ pet.owner_id }}">{{ pet.name }}</option>
-            {% endfor %}
+        <label for="pet_search" class="form-label">Животное:</label>
+        <select class="form-select" id="pet_search" name="pet_id" required data-ajax-url="/api/pets_by_owner">
+            {% if appointment %}
+            <option value="{{ appointment.pet.id }}" selected>
+                {{ appointment.pet.name }} ({{ appointment.pet.card_number }})
+            </option>
+            {% endif %}
         </select>
     </div>
 
     <!-- Продолжительность приёма (по умолчанию 30 минут) -->
     <div class="mb-3">
         <label for="duration" class="form-label">Продолжительность (мин)</label>
-        <input type="number" class="form-control" id="duration" name="duration" value="{{ appointment.duration if appointment else 30 }}" required>
+        <input type="number" class="form-control" id="duration" name="duration"
+            value="{{ appointment.duration if appointment else 30 }}" required>
     </div>
 
     <!-- Выбор повторного приёма -->
     <div class="mb-3">
         <label for="recurring" class="form-label">Повторный приём</label>
         <select class="form-control" id="recurring" name="recurring">
-            <option value="none" {% if not appointment or not appointment.is_recurring %}selected{% endif %}>Не повторять</option>
-            <option value="10_days" {% if appointment and appointment.recurring_type == '10_days' %}selected{% endif %}>Через 10 дней</option>
-            <option value="21_days" {% if appointment and appointment.recurring_type == '21_days' %}selected{% endif %}>Через 21 день</option>
-            <option value="1_year" {% if appointment and appointment.recurring_type == '1_year' %}selected{% endif %}>Через год</option>
-            <option value="1_year_birthday" {% if appointment and appointment.recurring_type == '1_year_birthday' %}selected{% endif %}>Когда исполнилось 1 год</option>
-            <option value="custom_date" {% if appointment and appointment.recurring_type == 'custom_date' %}selected{% endif %}>Выбрать дату</option>
+            <option value="none" {% if not appointment or not appointment.is_recurring %}selected{% endif %}>Не
+                повторять</option>
+            <option value="10_days" {% if appointment and appointment.recurring_type=='10_days' %}selected{% endif %}>
+                Через 10 дней</option>
+            <option value="21_days" {% if appointment and appointment.recurring_type=='21_days' %}selected{% endif %}>
+                Через 21 день</option>
+            <option value="1_year" {% if appointment and appointment.recurring_type=='1_year' %}selected{% endif %}>
+                Через год</option>
+            <option value="1_year_birthday" {% if appointment and appointment.recurring_type=='1_year_birthday'
+                %}selected{% endif %}>Когда исполнилось 1 год</option>
+            <option value="custom_date" {% if appointment and appointment.recurring_type=='custom_date' %}selected{%
+                endif %}>Выбрать дату</option>
         </select>
     </div>
 
     <!-- Поле для выбора конкретной даты, если выбран вариант с кастомной датой -->
-    <div class="mb-3" id="custom_date_field" style="display: {% if appointment and appointment.recurring_type == 'custom_date' %}block{% else %}none{% endif %};">
+    <div class="mb-3" id="custom_date_field"
+        style="display: {% if appointment and appointment.recurring_type == 'custom_date' %}block{% else %}none{% endif %};">
         <label for="custom_date" class="form-label">Выберите дату повторного приёма</label>
-        <input type="date" class="form-control" id="custom_date" name="custom_date" value="{{ appointment.appointment_date if appointment and appointment.recurring_type == 'custom_date' else '' }}">
+        <input type="date" class="form-control" id="custom_date" name="custom_date"
+            value="{{ appointment.appointment_date if appointment and appointment.recurring_type == 'custom_date' else '' }}">
     </div>
 
     <button type="submit" class="btn btn-success">Записать</button>
 </form>
 
-
+{% block scripts %}
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
+    $(document).ready(function () {
+        // Инициализация поиска владельцев
+        $('#owner_search').select2({
+            ajax: {
+                url: $('#owner_search').data('ajax-url'),
+                dataType: 'json',
+                delay: 250,
+                data: function (params) {
+                    return {
+                        term: params.term
+                    };
+                },
+                processResults: function (data) {
+                    return {
+                        results: data
+                    };
+                },
+                cache: true
+            },
+            minimumInputLength: 2,
+            placeholder: 'Начните вводить ФИО владельца',
+            language: 'ru'
+        });
 
-    function updatePets() {
-        let ownerId = document.getElementById('owner').value;
-        fetch(`/api/pets?owner_id=${ownerId}`)
-            .then(response => response.json())
-            .then(data => {
-                let petSelect = document.getElementById('pet');
-                petSelect.innerHTML = "";
-                data.forEach(pet => {
-                    let option = document.createElement('option');
-                    option.value = pet.id;
-                    option.textContent = pet.name;
-                    petSelect.appendChild(option);
-                });
-            });
-    }
+        // Инициализация выбора животных
+        $('#pet_search').select2({
+            ajax: {
+                url: $('#pet_search').data('ajax-url'),
+                dataType: 'json',
+                delay: 250,
+                data: function () {
+                    return {
+                        owner_id: $('#owner_search').val()
+                    };
+                },
+                processResults: function (data) {
+                    return {
+                        results: data
+                    };
+                }
+            },
+            placeholder: 'Выберите животное',
+            language: 'ru',
+            disabled: !$('#owner_search').val() // Отключаем, если владелец не выбран
+        });
 
-    document.getElementById('recurring').addEventListener('change', function() {
-        if (this.value === 'custom_date') {
-            document.getElementById('custom_date_field').style.display = 'block';
-        } else {
-            document.getElementById('custom_date_field').style.display = 'none';
+        // При изменении выбора владельца
+        $('#owner_search').on('change', function () {
+            const ownerId = $(this).val();
+            const petSelect = $('#pet_search');
+
+            if (ownerId) {
+                petSelect.prop('disabled', false);
+                petSelect.val(null).trigger('change'); // Загружаем животных владельца
+            } else {
+                petSelect.prop('disabled', true);
+                petSelect.val(null);
+            }
+        });
+
+        // Обработка изменения типа повторного приёма
+        $('#recurring').on('change', function () {
+            if (this.value === 'custom_date') {
+                $('#custom_date_field').show();
+            } else {
+                $('#custom_date_field').hide();
+            }
+        });
+
+        // Функция для получения параметров из URL
+        function getUrlParams() {
+            const urlParams = new URLSearchParams(window.location.search);
+            return {
+                date: urlParams.get('date'),
+                time: urlParams.get('time')
+            };
         }
-    });
 
-    // Функция для получения параметров из URL
-    function getUrlParams() {
-        const urlParams = new URLSearchParams(window.location.search);
-        return {
-            date: urlParams.get('date'),
-            time: urlParams.get('time')
-        };
-    }
-
-    // Функция для автозаполнения формы данными из URL
-    function fillFormFromUrlParams() {
-        const params = getUrlParams();
-        if (params.date) {
-            document.getElementById('date').value = params.date;  // Заполняем поле даты
+        // Функция для автозаполнения формы данными из URL
+        function fillFormFromUrlParams() {
+            const params = getUrlParams();
+            if (params.date) {
+                $('#date').val(params.date);  // Заполняем поле даты
+            }
+            if (params.time) {
+                $('#time').val(params.time);  // Заполняем поле времени
+            }
         }
-        if (params.time) {
-            document.getElementById('time').value = params.time;  // Заполняем поле времени
-        }
-    }
 
-    // Заполняем форму при загрузке страницы
-    window.onload = function() {
+        // Заполняем форму при загрузке страницы
         fillFormFromUrlParams();
-    };
+    });
 </script>
-
-
+{% endblock %}
 {% endblock %}

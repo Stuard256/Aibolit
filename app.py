@@ -66,20 +66,18 @@ def init_scheduler():
 
 @app.route('/', methods=['GET', 'POST'])    
 def index():
-    if request.method == 'POST':
-        # Если добавляется заметка администратора
-        if 'admin_note' in request.form:
-            note_content = request.form['admin_note']
-            if note_content.strip():
-                new_note = Note(content=note_content.strip())
-                db.session.add(new_note)
-                db.session.commit()
-                flash("Заметка успешно добавлена!")
-        return redirect(url_for('index'))
+    notes = Note.query.order_by(Note.timestamp.desc()).all()  # Всегда загружаем заметки
     
-    # Загружаем заметки для отображения
-    notes = Note.query.order_by(Note.timestamp.desc()).all()
-    return render_template('index.html', notes=notes)
+    if request.method == 'POST':
+        note_content = request.form.get('note')  # Используем 'note' вместо 'admin_note'
+        if note_content and note_content.strip():
+            new_note = Note(content=note_content.strip())
+            db.session.add(new_note)
+            db.session.commit()
+            flash("Заметка успешно добавлена!", 'success')
+            return redirect(url_for('index'))
+    
+    return render_template('index.html', notes=notes)  # Убедитесь, что передаёте notes
 
 @app.route('/admin')
 def admin_panel():
@@ -544,8 +542,8 @@ def new_appointment():
             appointment_date=request.form['date'],
             time=request.form['time'],
             description=request.form['description'],
-            owner_id=request.form['owner'],
-            pet_id=request.form['pet'],
+            owner_id=request.form['owner_id'],  # Изменили с 'owner' на 'owner_id'
+            pet_id=request.form['pet_id'],     # Убедитесь, что в форме поле называется pet_id
             duration=int(request.form['duration']),
         )
         db.session.add(new_appointment)
