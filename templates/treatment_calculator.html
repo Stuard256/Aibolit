@@ -1,75 +1,89 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="container">
-    <h2>Калькулятор назначений</h2>
+<h2>Калькулятор назначений</h2>
+<input type="hidden" id="appointment-id" value="{{ appointment_id or '' }}">
+<input type="hidden" id="initial-pet-id" value="{{ pet_id or '' }}">
 
-    <div id="treatment-calculator">
-        <!-- Форма для поиска и добавления назначений -->
-        <div class="treatment-entry mb-3">
-            <div class="row g-3">
-                <div class="col-md-5">
-                    <label for="treatment_search" class="form-label">Назначение</label>
-                    <select class="form-select treatment-search" id="treatment_search"
-                        data-ajax-url="{{ url_for('treatment_search') }}"></select>
-                </div>
-                <div class="col-md-1">
-                    <label for="dosage" class="form-label">Кол-во</label>
-                    <input type="number" class="form-control dosage" id="dosage" readonly>
-                </div>
-                <div class="col-md-1">
-                    <label for="unit_measure" class="form-label">Ед. изм.</label>
-                    <input type="text" class="form-control unit-measure" id="unit_measure" readonly>
-                </div>
-                <div class="col-md-2">
-                    <label for="quantity" class="form-label">Итого</label>
-                    <input type="number" step="0.1" min="0.1" class="form-control quantity" id="quantity"
-                        placeholder="Кол-во" value="1">
-                </div>
-                <div class="col-md-2">
-                    <label for="price" class="form-label">Цена</label>
-                    <input type="text" class="form-control price" id="price" readonly>
-                </div>
+<div id="treatment-calculator">
+    <!-- Форма для поиска и добавления назначений -->
+    <div class="treatment-entry mb-3">
+        <div class="row g-3">
+            <div class="col-md-5">
+                <label for="treatment_search" class="form-label">Назначение</label>
+                <select class="form-select treatment-search" id="treatment_search"
+                    data-ajax-url="{{ url_for('treatment_search') }}"></select>
             </div>
-            <input type="hidden" class="treatment-id">
-            <input type="hidden" class="unit-price">
+            <div class="col-md-1">
+                <label for="dosage" class="form-label">Кол-во</label>
+                <input type="number" class="form-control dosage" id="dosage" readonly>
+            </div>
+            <div class="col-md-1">
+                <label for="unit_measure" class="form-label">Ед. изм.</label>
+                <input type="text" class="form-control unit-measure" id="unit_measure" readonly>
+            </div>
+            <div class="col-md-2">
+                <label for="quantity" class="form-label">Итого</label>
+                <input type="number" step="0.1" min="0.1" class="form-control quantity" id="quantity"
+                    placeholder="Кол-во" value="1">
+            </div>
+            <div class="col-md-2">
+                <label for="price" class="form-label">Цена</label>
+                <input type="text" class="form-control price" id="price" readonly>
+            </div>
         </div>
-
-        <button class="btn btn-primary add-treatment mb-3">Добавить назначение</button>
-
-        <!-- Список добавленных назначений -->
-        <div class="treatment-list mb-3">
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>Назначение</th>
-                        <th>Ед. изм.</th>
-                        <th>Кол-во</th>
-                        <th>Цена</th>
-                        <th>Сумма</th>
-                        <th></th>
-                    </tr>
-                </thead>
-                <tbody id="treatments-table">
-                    <!-- Сюда будут добавляться назначения -->
-                </tbody>
-            </table>
-        </div>
-
-        <!-- Итоговая сумма -->
-        <div class="total-price mb-3">
-            <h4>Итого: <span id="total-amount">0</span> руб.</h4>
-        </div>
-
-        <!-- Поиск питомца -->
-        <div class="pet-search mb-3">
-            <h4>Привязать к карточке питомца</h4>
-            <select class="form-select" id="pet_search" data-ajax-url="{{ url_for('pet_search') }}"></select>
-            <input type="hidden" id="pet-id">
-        </div>
-
-        <button class="btn btn-success save-btn" disabled>Сохранить назначения</button>
+        <input type="hidden" class="treatment-id">
+        <input type="hidden" class="unit-price">
     </div>
+
+    <button class="btn btn-primary add-treatment mb-3">Добавить назначение</button>
+
+    <!-- Список добавленных назначений -->
+    <div class="treatment-list mb-3">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Назначение</th>
+                    <th>Ед. изм.</th>
+                    <th>Кол-во</th>
+                    <th>Цена</th>
+                    <th>Сумма</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody id="treatments-table">
+                {% if treatments %}
+                {% for treatment in treatments %}
+                <tr class="treatment-row" data-id="{{ treatment.id }}">
+                    <td>{{ treatment.name }}</td>
+                    <td>{{ treatment.unit }}</td>
+                    <td>{{ treatment.quantity }}</td>
+                    <td>{{ treatment.price }}</td>
+                    <td class="row-total">{{ treatment.total }}</td>
+                    <td><button class="btn btn-sm btn-danger remove-treatment">×</button></td>
+                </tr>
+                {% endfor %}
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Итоговая сумма -->
+    <div class="total-price mb-3">
+        <h4>Итого: <span id="total-amount">0</span> руб.</h4>
+    </div>
+
+    <!-- Поиск питомца -->
+    <div class="pet-search mb-3">
+        <h4>Привязать к карточке питомца</h4>
+        <select class="form-select" id="pet_search" data-ajax-url="{{ url_for('pet_search') }}"></select>
+        <input type="hidden" id="pet-id" value="{{ pet_id or '' }}">
+    </div>
+
+    <button id="save-btn" class="btn btn-success" {% if not treatments %}disabled{% endif %}>
+        {% if appointment_id and appointment_id != 'new' %}Обновить{% else %}Сохранить{% endif %} назначения
+    </button>
+</div>
 </div>
 
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
@@ -118,7 +132,7 @@
         });
 
         // Инициализация Select2 для поиска питомцев
-        $('#pet_search').select2({
+        const petSelect = $('#pet_search').select2({
             ajax: {
                 url: $('#pet_search').data('ajax-url'),
                 dataType: 'json',
@@ -143,10 +157,29 @@
             language: 'ru'
         });
 
+        const initialPetId = $('#initial-pet-id').val();
+        if (initialPetId) {
+            $.ajax({
+                url: '/api/pets_by_owner',
+                data: { owner_id: 'any', term: '' }, // Фиктивный запрос
+                dataType: 'json',
+                success: function (data) {
+                    const pet = data.find(p => p.id == initialPetId);
+                    if (pet) {
+                        const option = new Option(pet.text, pet.id, true, true);
+                        petSelect.append(option).trigger('change');
+                        $('#pet-id').val(pet.id);
+                        $('#save-btn').prop('disabled', false);
+                    }
+                }
+            });
+        }
+
+
         // При выборе питомца
         $('#pet_search').on('select2:select', function (e) {
             $('#pet-id').val(e.params.data.id);
-            $('.save-btn').prop('disabled', false);
+            $('#save-btn').prop('disabled', false);
         });
 
         // Добавление назначения в таблицу
@@ -199,8 +232,58 @@
             $('#total-amount').text(total.toFixed(2));
 
             // Активируем кнопку сохранения если есть назначения
-            $('.save-btn').prop('disabled', total <= 0 || !$('#pet-id').val());
+            $('#save-btn').prop('disabled', total <= 0 || !$('#pet-id').val());
         }
+
+        $('#save-btn').click(function () {
+            const petId = $('#pet-id').val();
+            const appointmentId = $('#appointment-id').val();
+            const treatments = [];
+
+            $('.treatment-row').each(function () {
+                treatments.push({
+                    id: $(this).data('id'),
+                    quantity: parseFloat($(this).find('td').eq(2).text()),
+                    total: parseFloat($(this).find('.row-total').text())
+                });
+            });
+
+            if (!petId) {
+                alert('Выберите питомца!');
+                return;
+            }
+
+            if (treatments.length === 0) {
+                alert('Добавьте хотя бы одно назначение!');
+                return;
+            }
+
+            const url = appointmentId ? `/appointment/${appointmentId}/treatments` : '/save_treatments';
+
+            $.ajax({
+                url: url,
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    pet_id: petId,
+                    treatments: treatments
+                }),
+                success: function (response) {
+                    if (response.success) {
+                        if (appointmentId) {
+                            window.location.href = `/appointment/${appointmentId}`;
+                        } else {
+                            window.location.href = '/appointments';
+                        }
+                    } else {
+                        alert('Ошибка сохранения: ' + (response.error || 'Неизвестная ошибка'));
+                    }
+                },
+                error: function (xhr) {
+                    alert('Ошибка сервера: ' + xhr.responseText);
+                }
+            });
+        });
     });
 </script>
 {% endblock %}

@@ -82,6 +82,28 @@
     </div>
 
     <button type="submit" class="btn btn-success">Записать</button>
+
+    <div class="mb-3">
+        <label class="form-label">Назначения</label>
+        <div id="treatments-list" class="mb-2">
+            {% if appointment and appointment.treatments %}
+            {% for treatment in appointment.treatments %}
+            <div class="treatment-item" data-id="{{ treatment.id }}">
+                {{ treatment.treatment.name }} - {{ treatment.quantity }} {{ treatment.treatment.unit }} ({{
+                treatment.total_price }} руб.)
+                <a href="{{ url_for('treatment_calculator', appointment_id=appointment.id) }}"
+                    class="btn btn-sm btn-outline-primary">Ред.</a>
+            </div>
+            {% endfor %}
+            {% else %}
+            <div class="text-muted">Нет назначений</div>
+            {% endif %}
+        </div>
+        <a href="{{ url_for('treatment_calculator', appointment_id=appointment.id if appointment else 'new', pet_id=pet.id if pet else '') }}"
+            class="btn btn-secondary">
+            Калькулятор назначений
+        </a>
+    </div>
 </form>
 
 {% block scripts %}

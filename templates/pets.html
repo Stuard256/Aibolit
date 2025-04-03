@@ -5,15 +5,15 @@
 
 <form method="get" class="mb-3">
   <div class="row g-3">
-    <div class="col-md-5">
+    <div class="col-md-4">
       <input type="text" name="search_owner" class="form-control" placeholder="Часть ФИО владельца"
         value="{{ search_owner }}">
     </div>
-    <div class="col-md-5">
+    <div class="col-md-3">
       <input type="text" name="search_pet" class="form-control" placeholder="Часть клички животного"
         value="{{ search_pet }}">
     </div>
-    <div class="col-md-2">
+    <div class="col-md-4">
       <div class="d-grid gap-2 d-md-flex justify-content-md-end">
         <a class="btn btn-secondary" href="{{ url_for('add_pet') }}">Добавить животное</a>
         <button type="submit" class="btn btn-primary">Найти</button>

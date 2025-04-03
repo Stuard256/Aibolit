@@ -1,12 +1,16 @@
 <!DOCTYPE html>
 <html lang="ru">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Детали приёма</title>
     <!-- Подключаем Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Подключаем иконки Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
 </head>
+
 <body class="bg-light">
     <div class="container mt-4">
         <div class="card shadow-lg">
@@ -18,25 +22,29 @@
                     <h5 class="card-title text-muted">Информация о приёме</h5>
                     <div class="mb-3">
                         <label for="date" class="form-label">Дата</label>
-                        <input type="date" class="form-control" id="date" name="date" value="{{ appointment.appointment_date }}" required>
+                        <input type="date" class="form-control" id="date" name="date"
+                            value="{{ appointment.appointment_date }}" required>
                     </div>
                     <div class="mb-3">
                         <label for="time" class="form-label">Время</label>
-                        <input type="time" class="form-control" id="time" name="time" value="{{ appointment.time }}" required>
+                        <input type="time" class="form-control" id="time" name="time" value="{{ appointment.time }}"
+                            required>
                     </div>
                     <div class="mb-3">
                         <label for="duration" class="form-label">Длительность приёма (в минутах)</label>
-                        <input type="number" class="form-control" id="duration" name="duration" value="{{ appointment.duration }}" required>
+                        <input type="number" class="form-control" id="duration" name="duration"
+                            value="{{ appointment.duration }}" required>
                     </div>
                     <div class="mb-3">
                         <label for="description" class="form-label">Описание</label>
-                        <textarea class="form-control" id="description" name="description" rows="3" required>{{ appointment.description }}</textarea>
+                        <textarea class="form-control" id="description" name="description" rows="3"
+                            required>{{ appointment.description }}</textarea>
                     </div>
 
                     <hr>
 
                     <h5 class="card-title text-muted">Владелец</h5>
-                    <p><strong>ФИО:</strong> 
+                    <p><strong>ФИО:</strong>
                         <a href="{{ url_for('owner_card', owner_id=owner.id) }}" class="text-decoration-none">
                             {{ owner.name }}
                         </a>
@@ -52,16 +60,84 @@
 
                     <hr>
 
-                    <!-- Кнопка для сохранения изменений -->
-                    <div class="d-flex justify-content-between">
-                        <button type="submit" class="btn btn-success">Сохранить изменения</button>
-                        <a href="{{ url_for('index') }}" class="btn btn-secondary">Назад</a>
-                    </div>
-                </form>
+                    <!-- Секция назначений -->
+                    <h5 class="card-title text-muted">Назначения
+                        <a href="{{ url_for('treatment_calculator', appointment_id=appointment.id, pet_id=pet.id) }}"
+                            class="btn btn-sm btn-outline-primary ms-2">
+                            <i class="bi bi-plus-lg"></i> Добавить/изменить
+                        </a>
+                    </h5>
 
-                <!-- Форма для удаления записи -->
-                <form method="POST" action="{{ url_for('appointment_delete', appointment_id=appointment.id) }}" style="display:inline;">
-                    <button type="submit" class="btn btn-danger mt-3">Удалить запись</button>
+                    {% if appointment.treatments %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Назначение</th>
+                                    <th>Количество</th>
+                                    <th>Ед. изм.</th>
+                                    <th>Цена</th>
+                                    <th>Сумма</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for treatment in appointment.treatments %}
+                                <tr>
+                                    <td>{{ treatment.treatment.name }}</td>
+                                    <td>{{ treatment.quantity }}</td>
+                                    <td>{{ treatment.treatment.unit }}</td>
+                                    <td>{{ treatment.treatment.price }} руб.</td>
+                                    <td>{{ treatment.total_price }} руб.</td>
+                                    <td class="text-end">
+                                        <a href="{{ url_for('delete_treatment', treatment_id=treatment.id, appointment_id=appointment.id) }}"
+                                            class="btn btn-sm btn-outline-danger"
+                                            onclick="return confirm('Удалить это назначение?')">
+                                            <i class="bi bi-trash"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                                <tr class="table-active">
+                                    <td colspan="4"><strong>Итого:</strong></td>
+                                    <td><strong>{{ appointment.treatments|sum(attribute='total_price') }} руб.</strong>
+                                    </td>
+                                    <td></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info">Нет назначений</div>
+                    {% endif %}
+
+                    <hr>
+
+                    <!-- Кнопки управления -->
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <button type="submit" class="btn btn-success me-2">
+                                <i class="bi bi-check-circle"></i> Сохранить
+                            </button>
+                            <a href="{{ url_for('index') }}" class="btn btn-secondary">
+                                <i class="bi bi-arrow-left"></i> Назад
+                            </a>
+                        </div>
+                        <div>
+                            <a href="{{ url_for('generate_report', appointment_id=appointment.id) }}"
+                                class="btn btn-info me-2">
+                                <i class="bi bi-file-earmark-text"></i> Печать
+                            </a>
+                            <form method="POST"
+                                action="{{ url_for('appointment_delete', appointment_id=appointment.id) }}"
+                                class="d-inline">
+                                <button type="submit" class="btn btn-danger"
+                                    onclick="return confirm('Вы уверены, что хотите удалить эту запись?')">
+                                    <i class="bi bi-trash"></i> Удалить
+                                </button>
+                            </form>
+                        </div>
+                    </div>
                 </form>
             </div>
         </div>
@@ -70,4 +146,5 @@
     <!-- Подключаем Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
+
 </html>

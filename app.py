@@ -79,6 +79,30 @@ def index():
     
     return render_template('index.html', notes=notes)  # Убедитесь, что передаёте notes
 
+@app.route('/appointment/<int:appointment_id>/treatments', methods=['POST'])
+def update_appointment_treatments(appointment_id):
+    data = request.json
+    try:
+        # Удаляем старые назначения
+        AppointmentTreatment.query.filter_by(appointment_id=appointment_id).delete()
+        
+        # Добавляем новые
+        for treatment in data['treatments']:
+            at = AppointmentTreatment(
+                appointment_id=appointment_id,
+                treatment_id=treatment['id'],
+                quantity=treatment['quantity'],
+                total_price=treatment['total'],
+                notes=''
+            )
+            db.session.add(at)
+        
+        db.session.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/admin')
 def admin_panel():
     # Проверка авторизации (добавьте свою логику проверки прав)
@@ -100,7 +124,13 @@ def manual_backup():
     result = create_backup()
     return jsonify(result)
 
-
+@app.route('/delete_treatment/<int:treatment_id>/<int:appointment_id>')
+def delete_treatment(treatment_id, appointment_id):
+    treatment = AppointmentTreatment.query.get_or_404(treatment_id)
+    db.session.delete(treatment)
+    db.session.commit()
+    flash('Назначение удалено', 'success')
+    return redirect(url_for('appointment_details', appointment_id=appointment_id))
 
 @app.route('/available_card_numbers')
 def available_card_numbers():
@@ -133,12 +163,58 @@ def available_card_numbers():
                          min_number=min_number,
                          max_number=max_number)
 
+@app.route('/edit_treatment/<int:treatment_id>', methods=['GET', 'POST'])
+def edit_treatment(treatment_id):
+    treatment = Treatment.query.get_or_404(treatment_id)
+    form = TreatmentForm(obj=treatment)
+    
+    if form.validate_on_submit():
+        try:
+            form.populate_obj(treatment)
+            db.session.commit()
+            flash('Назначение успешно обновлено!', 'success')
+            return redirect(url_for('list_treatments'))
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Ошибка при обновлении назначения: {str(e)}', 'danger')
+    
+    return render_template('edit_treatment.html', form=form, treatment=treatment)
+
+@app.route('/delete_treatment/<int:treatment_id>', methods=['POST'])
+def delete_treatment_id(treatment_id):
+    treatment = Treatment.query.get_or_404(treatment_id)
+    try:
+        db.session.delete(treatment)
+        db.session.commit()
+        flash('Назначение успешно удалено!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Ошибка при удалении назначения: {str(e)}', 'danger')
+    
+    return redirect(url_for('list_treatments'))
+
 @app.route('/treatment_calculator', methods=['GET', 'POST'])
 def treatment_calculator():
     form = TreatmentCalculatorForm()
     treatments = []
     total = 0
-    pet_id = None
+    pet_id = request.args.get('pet_id')  # Получаем pet_id из параметров URL
+    appointment_id = request.args.get('appointment_id')  # Получаем appointment_id из параметров URL
+    
+    # Если передан appointment_id, загружаем существующие назначения
+    if appointment_id and appointment_id != 'new':
+        appointment = Appointment.query.get(appointment_id)
+        if appointment:
+            pet_id = appointment.pet_id
+            treatments = [{
+                'id': at.treatment_id,
+                'name': at.treatment.name,
+                'quantity': at.quantity,
+                'price': at.treatment.price,
+                'unit': at.treatment.unit,
+                'total': at.total_price
+            } for at in appointment.treatments]
+            total = sum(t['total'] for t in treatments)
     
     if request.method == 'POST':
         if 'treatment_search' in request.form:
@@ -171,12 +247,67 @@ def treatment_calculator():
                     'total': quantity * treatment.price / treatment.dosage
                 })
                 total = sum(t['total'] for t in treatments)
+        
+        elif 'save_treatments' in request.form:
+            # Сохранение назначений
+            try:
+                if appointment_id and appointment_id != 'new':
+                    # Обновляем существующий прием
+                    appointment = Appointment.query.get(appointment_id)
+                    # Удаляем старые назначения
+                    AppointmentTreatment.query.filter_by(appointment_id=appointment_id).delete()
+                else:
+                    # Создаем новый прием
+                    if not pet_id:
+                        flash('Не выбран питомец', 'error')
+                        return redirect(request.url)
+                    
+                    pet = Pet.query.get(pet_id)
+                    if not pet:
+                        flash('Питомец не найден', 'error')
+                        return redirect(request.url)
+                    
+                    appointment = Appointment(
+                        appointment_date=datetime.now().date(),
+                        time=datetime.now().time(),
+                        pet_id=pet_id,
+                        owner_id=pet.owner_id,
+                        description="Назначения из калькулятора"
+                    )
+                    db.session.add(appointment)
+                    db.session.flush()  # Получаем ID нового приема
+                
+                # Добавляем назначения
+                for treatment in treatments:
+                    at = AppointmentTreatment(
+                        appointment_id=appointment.id,
+                        treatment_id=treatment['id'],
+                        quantity=treatment['quantity'],
+                        total_price=treatment['total'],
+                        notes=''
+                    )
+                    db.session.add(at)
+                
+                db.session.commit()
+                
+                if appointment_id and appointment_id != 'new':
+                    flash('Назначения успешно обновлены', 'success')
+                    return redirect(url_for('appointment_details', appointment_id=appointment_id))
+                else:
+                    flash('Назначения успешно сохранены', 'success')
+                    return redirect(url_for('appointment_details', appointment_id=appointment.id))
+            
+            except Exception as e:
+                db.session.rollback()
+                flash(f'Ошибка при сохранении: {str(e)}', 'error')
+                return redirect(request.url)
     
     return render_template('treatment_calculator.html', 
                          form=form,
                          treatments=treatments,
                          total=total,
-                         pet_id=pet_id)
+                         pet_id=pet_id,
+                         appointment_id=appointment_id)
 
 @app.route('/treatment_search')
 def treatment_search():
@@ -231,7 +362,7 @@ def save_treatments():
         for treatment in treatments:
             at = AppointmentTreatment(
                 appointment_id=appointment.id,
-                treatment_item_id=treatment['id'],
+                treatment_id=treatment['id'],
                 quantity=treatment['quantity'],
                 total_price=treatment['total'],
                 notes=treatment.get('notes', '')
@@ -684,7 +815,7 @@ def add_owner():
         db.session.add(new_owner)
         db.session.commit()
         flash("Карточка владельца успешно добавлена!")
-        return redirect(url_for('owners_list'))
+        return redirect(url_for('owner_card', owner_id=new_owner.id))
     return render_template('add_owner.html')
 
 # Карточка владельца с возможностью редактирования
@@ -827,8 +958,7 @@ def add_pet():
             db.session.add(new_pet)
             db.session.commit()
             flash("Карточка животного успешно добавлена!", 'success')
-            return redirect(url_for('pets_list'))
-
+            return redirect(url_for('pet_card', pet_id=new_pet.id))
         except Exception as e:
             db.session.rollback()
             flash(f"Ошибка при добавлении карточки: {str(e)}", 'error')

@@ -54,6 +54,11 @@ class Appointment(db.Model):
     pet_id = db.Column(db.Integer, db.ForeignKey('pet.id'), nullable=False)
     is_recurring = db.Column(db.Boolean, default=False)  # Для повторных приёмов
     recurring_type = db.Column(db.String(50))  # Тип повторного приёма, например "10 дней", "1 год" и т.д.
+    treatments = db.relationship('AppointmentTreatment', backref='appointment', cascade='all, delete-orphan')
+    def total_cost(self):
+        return sum(t.total_price for t in self.treatments)
+    def __repr__(self):
+        return f'<Appointment {self.appointment_date} {self.time} - {self.pet.name}>'
 
 class Note(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -90,15 +95,14 @@ class Treatment(db.Model):
     unit = db.Column(db.String(20), nullable=False)  # Единица измерения (мл, г, таблетка)
     price = db.Column(db.Float, nullable=False)  # Цена за единицу
     description = db.Column(db.Text)  # Дополнительное описание
+    def __repr__(self):
+        return f'<Treatment {self.name} ({self.price} руб./{self.unit})>'
     
 class AppointmentTreatment(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     appointment_id = db.Column(db.Integer, db.ForeignKey('appointment.id'), nullable=False)
     treatment_id = db.Column(db.Integer, db.ForeignKey('treatment.id'), nullable=False)
-    treatment = db.relationship('Treatment')
-    quantity = db.Column(db.Float, nullable=False)  # Количество единиц
-    total_price = db.Column(db.Float, nullable=False)  # quantity * price / dosage
-    notes = db.Column(db.Text)
-
-# Добавим связь в модель Appointment
-Appointment.treatments = db.relationship('AppointmentTreatment', backref='appointment', lazy=True, cascade='all, delete-orphan')
+    quantity = db.Column(db.Float, nullable=False)
+    total_price = db.Column(db.Float, nullable=False)
+    notes = db.Column(db.Text, default='')
+    treatment = db.relationship('Treatment', lazy='joined')  # joined загрузка для уменьшения запросов
