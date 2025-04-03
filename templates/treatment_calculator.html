@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <h2>Калькулятор назначений</h2>
+
+    <div id="treatment-calculator">
+        <!-- Форма для поиска и добавления назначений -->
+        <div class="treatment-entry mb-3">
+            <div class="row g-3">
+                <div class="col-md-5">
+                    <label for="treatment_search" class="form-label">Назначение</label>
+                    <select class="form-select treatment-search" id="treatment_search"
+                        data-ajax-url="{{ url_for('treatment_search') }}"></select>
+                </div>
+                <div class="col-md-1">
+                    <label for="dosage" class="form-label">Кол-во</label>
+                    <input type="number" class="form-control dosage" id="dosage" readonly>
+                </div>
+                <div class="col-md-1">
+                    <label for="unit_measure" class="form-label">Ед. изм.</label>
+                    <input type="text" class="form-control unit-measure" id="unit_measure" readonly>
+                </div>
+                <div class="col-md-2">
+                    <label for="quantity" class="form-label">Итого</label>
+                    <input type="number" step="0.1" min="0.1" class="form-control quantity" id="quantity"
+                        placeholder="Кол-во" value="1">
+                </div>
+                <div class="col-md-2">
+                    <label for="price" class="form-label">Цена</label>
+                    <input type="text" class="form-control price" id="price" readonly>
+                </div>
+            </div>
+            <input type="hidden" class="treatment-id">
+            <input type="hidden" class="unit-price">
+        </div>
+
+        <button class="btn btn-primary add-treatment mb-3">Добавить назначение</button>
+
+        <!-- Список добавленных назначений -->
+        <div class="treatment-list mb-3">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Назначение</th>
+                        <th>Ед. изм.</th>
+                        <th>Кол-во</th>
+                        <th>Цена</th>
+                        <th>Сумма</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody id="treatments-table">
+                    <!-- Сюда будут добавляться назначения -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Итоговая сумма -->
+        <div class="total-price mb-3">
+            <h4>Итого: <span id="total-amount">0</span> руб.</h4>
+        </div>
+
+        <!-- Поиск питомца -->
+        <div class="pet-search mb-3">
+            <h4>Привязать к карточке питомца</h4>
+            <select class="form-select" id="pet_search" data-ajax-url="{{ url_for('pet_search') }}"></select>
+            <input type="hidden" id="pet-id">
+        </div>
+
+        <button class="btn btn-success save-btn" disabled>Сохранить назначения</button>
+    </div>
+</div>
+
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+<script>
+    $(document).ready(function () {
+        // Инициализация Select2 для поиска назначений
+        $('#treatment_search').select2({
+            ajax: {
+                url: $('#treatment_search').data('ajax-url'),
+                dataType: 'json',
+                delay: 250,
+                data: function (params) {
+                    return { term: params.term };
+                },
+                processResults: function (data) {
+                    return {
+                        results: $.map(data, function (item) {
+                            return {
+                                id: item.id,
+                                text: `${item.name} (${item.dosage || '—'}) - ${item.price} руб./${item.unit}`,
+                                price: item.price,
+                                measure: item.unit,
+                                name: item.name,
+                                dosage: item.dosage
+                            }
+                        })
+                    };
+                },
+                cache: true
+            },
+            minimumInputLength: 2,
+            placeholder: 'Начните вводить название назначения',
+            language: 'ru'
+        });
+
+        // При выборе назначения заполняем поля
+        $('#treatment_search').on('select2:select', function (e) {
+            const data = e.params.data;
+            $('.treatment-id').val(data.id);
+            $('.unit-price').val(data.price);
+            $('.unit-measure').val(data.measure);
+            $('.dosage').val(data.dosage);
+            $('.price').val(data.price);
+        });
+
+        // Инициализация Select2 для поиска питомцев
+        $('#pet_search').select2({
+            ajax: {
+                url: $('#pet_search').data('ajax-url'),
+                dataType: 'json',
+                delay: 250,
+                data: function (params) {
+                    return { term: params.term };
+                },
+                processResults: function (data) {
+                    return {
+                        results: $.map(data, function (item) {
+                            return {
+                                id: item.id,
+                                text: `${item.name} (${item.card_number}) - ${item.owner.name}`
+                            }
+                        })
+                    };
+                },
+                cache: true
+            },
+            minimumInputLength: 2,
+            placeholder: 'Поиск по кличке или номеру карты',
+            language: 'ru'
+        });
+
+        // При выборе питомца
+        $('#pet_search').on('select2:select', function (e) {
+            $('#pet-id').val(e.params.data.id);
+            $('.save-btn').prop('disabled', false);
+        });
+
+        // Добавление назначения в таблицу
+        $('.add-treatment').click(function () {
+            const treatmentId = $('.treatment-id').val();
+            const treatmentName = $('#treatment_search').select2('data')[0]?.name;
+            const quantity = parseFloat($('.quantity').val()) || 1;
+            const unitPrice = parseFloat($('.unit-price').val()) || 0;
+            const unitMeasure = $('.unit-measure').val();
+            const dosage = $('.dosage').val();
+
+            if (treatmentId && treatmentName && !isNaN(quantity) && quantity > 0) {
+                const total = quantity * unitPrice / dosage;
+
+                const row = `
+                <tr class="treatment-row" data-id="${treatmentId}">
+                    <td>${treatmentName}</td>
+                    <td>${unitMeasure}</td>
+                    <td>${quantity}</td>
+                    <td>${unitPrice.toFixed(2)}</td>
+                    <td class="row-total">${total.toFixed(2)}</td>
+                    <td><button class="btn btn-sm btn-danger remove-treatment">×</button></td>
+                </tr>`;
+
+                $('#treatments-table').append(row);
+                updateTotal();
+
+                // Очищаем форму
+                $('#treatment_search').val(null).trigger('change');
+                $('.quantity').val('1');
+                $('.unit-measure, .price').val('');
+                $('.treatment-id, .unit-price').val('');
+            } else {
+                alert('Заполните все поля корректно!');
+            }
+        });
+
+        // Удаление назначения из таблицы
+        $(document).on('click', '.remove-treatment', function () {
+            $(this).closest('tr').remove();
+            updateTotal();
+        });
+
+        // Функция обновления итоговой суммы
+        function updateTotal() {
+            let total = 0;
+            $('.treatment-row').each(function () {
+                total += parseFloat($(this).find('.row-total').text());
+            });
+            $('#total-amount').text(total.toFixed(2));
+
+            // Активируем кнопку сохранения если есть назначения
+            $('.save-btn').prop('disabled', total <= 0 || !$('#pet-id').val());
+        }
+    });
+</script>
+{% endblock %}

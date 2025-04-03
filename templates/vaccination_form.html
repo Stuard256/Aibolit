@@ -1,89 +1,194 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Добавить/Редактировать вакцинацию</title>
-    <!-- Подключение Bootstrap -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-</head>
-<body class="container mt-4">
-    <h1 class="text-center">{% if vaccination %}Редактировать вакцинацию{% else %}Добавить новую вакцинацию{% endif %}</h1>
+{% extends "base.html" %}
+{% block title %}{% if vaccination %}Редактировать{% else %}Добавить{% endif %} вакцинацию{% endblock %}
+{% block content %}
+<div class="container mt-4">
+    <h1 class="text-center">{% if vaccination %}Редактировать вакцинацию{% else %}Добавить новую вакцинацию{% endif %}
+    </h1>
 
     <form method="POST" class="mt-4">
         <div class="mb-3">
-            <label for="owner_id" class="form-label">Владелец:</label>
-            <select class="form-select" name="owner_id" id="owner_id">
-                {% for owner in owners %}
-                <option value="{{ owner.id }}" {% if vaccination and vaccination.owner_id == owner.id %}selected{% endif %}>{{ owner.name }}</option>
-                {% endfor %}
+            <label for="owner_search" class="form-label">Владелец:</label>
+            <select class="form-select" id="owner_search" name="owner_id" required
+                data-ajax-url="{{ url_for('search_owners') }}">
+                {% if selected_owner %}
+                <option value="{{ selected_owner.id }}" selected>
+                    {{ selected_owner.name }}
+                </option>
+                {% endif %}
             </select>
         </div>
 
         <div class="mb-3">
-            <label for="pet_id" class="form-label">Животное:</label>
-            <select class="form-select" name="pet_id" id="pet_id">
-                {% for pet in pets %}
-                <option value="{{ pet.id }}" {% if vaccination and vaccination.pet_id == pet.id %}selected{% endif %}>{{ pet.name }}</option>
-                {% endfor %}
+            <label for="pet_search" class="form-label">Животное:</label>
+            <select class="form-select" id="pet_search" name="pet_id" required data-ajax-url="/api/pets_by_owner">
+                {% if selected_pet %}
+                <option value="{{ selected_pet.id }}" selected>
+                    {{ selected_pet.name }} ({{ selected_pet.card_number }})
+                </option>
+                {% endif %}
             </select>
         </div>
 
         <div class="mb-3">
             <label for="vaccine_name" class="form-label">Название вакцины:</label>
-            <input type="text" class="form-control" name="vaccine_name" id="vaccine_name" value="{{ vaccination.vaccine_name if vaccination else '' }}">
+            <input type="text" class="form-control" name="vaccine_name" id="vaccine_name"
+                value="{{ vaccination.vaccine_name if vaccination else '' }}" required>
         </div>
 
         <div class="mb-3">
             <label for="date_administered" class="form-label">Дата вакцинации:</label>
-            <input type="date" class="form-control" name="date_administered" id="date_administered" value="{{ vaccination.date_administered if vaccination else '' }}" onchange="setnextDueDate()">
+            <input type="date" class="form-control" name="date_administered" id="date_administered"
+                value="{{ vaccination.date_administered if vaccination else '' }}" onchange="setnextDueDate()" required>
         </div>
 
         <div class="mb-3">
             <label for="vaccination_type" class="form-label">Тип вакцинации:</label>
-            <input type="text" class="form-control" name="vaccination_type" id="vaccination_type" value="{{ vaccination.vaccination_type if vaccination else '' }}">
+            <select class="form-select" name="vaccination_type" id="vaccination_type" required
+                onchange="checkPreviousVaccination()">
+                <option value="">Выберите тип вакцинации</option>
+                <option value="Бешенство" {% if vaccination and vaccination.vaccination_type=='Бешенство' %}selected{%
+                    endif %}>
+                    Бешенство</option>
+                <option value="Вирусные" {% if vaccination and vaccination.vaccination_type=='Вирусные' %}selected{%
+                    endif %}>
+                    Вирусные</option>
+                <option value="Грибковые" {% if vaccination and vaccination.vaccination_type=='Грибковые' %}selected{%
+                    endif %}>
+                    Грибковые</option>
+            </select>
         </div>
 
         <div class="mb-3">
-            <label for="dose_ml" class="form-label">Доза (мл):</label>
-            <input type="text" class="form-control" name="dose_ml" id="dose_ml" value="{{ vaccination.dose_ml if vaccination else '' }}">
+            <label for="dose_ml" class="form-label">Доза:</label>
+            <select class="form-select" name="dose_ml" id="dose_ml" required>
+                <option value="">Выберите дозу</option>
+                <option value="0.5" {% if vaccination and vaccination.dose_ml==0.5 %}selected{% endif %}>0.5</option>
+                <option value="1" {% if vaccination and vaccination.dose_ml==1 %}selected{% endif %}>1</option>
+                <option value="2" {% if vaccination and vaccination.dose_ml==2 %}selected{% endif %}>2</option>
+            </select>
         </div>
 
         <div class="mb-3">
             <label for="previous_vaccination_date" class="form-label">Дата предыдущей вакцинации:</label>
-            <input type="date" class="form-control" name="previous_vaccination_date" id="previous_vaccination_date" value="{{ vaccination.previous_vaccination_date if vaccination else '' }}">
+            <input type="date" class="form-control" name="previous_vaccination_date" id="previous_vaccination_date"
+                value="{{ vaccination.previous_vaccination_date if vaccination else '' }}">
         </div>
-        
+
         <div class="mb-3">
             <label for="next_due_date" class="form-label">Дата следующей вакцинации:</label>
-            <input type="date" class="form-control" name="next_due_date" id="next_due_date" value="{{ vaccination.next_due_date if vaccination else '' }}">
+            <input type="date" class="form-control" name="next_due_date" id="next_due_date"
+                value="{{ vaccination.next_due_date if vaccination else '' }}">
         </div>
 
         <button type="submit" class="btn btn-primary">{% if vaccination %}Обновить{% else %}Создать{% endif %}</button>
     </form>
+</div>
 
-    <!-- Подключение Bootstrap JS (необязательно, только если нужен JS функционал Bootstrap) -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    
-    <script>
-        // Функция для установки даты следующей вакцинации + 1 год
-        function setNextDueDate() {
-            const dateAdministered = document.getElementById('date_administered').value;
-            if (dateAdministered) {
-                const date = new Date(dateAdministered);
-                date.setFullYear(date.getFullYear() + 1); // Устанавливаем +1 год
-                const nextDueDate = date.toISOString().split('T')[0]; // Форматируем в формат YYYY-MM-DD
-                document.getElementById('next_due_date').value = nextDueDate;
+{% block scripts %}
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    function checkPreviousVaccination() {
+        const petId = $('#pet_search').val();
+        const vaccineType = $('#vaccination_type').val();
+
+        if (!petId || !vaccineType) return;
+
+        // Запрос к серверу для получения последней вакцинации этого типа
+        fetch(`/api/last_vaccination?pet_id=${petId}&vaccine_type=${encodeURIComponent(vaccineType)}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data && data.date_administered) {
+                    document.getElementById('previous_vaccination_date').value = data.date_administered;
+                }
+            })
+            .catch(error => console.error('Error:', error));
+    }
+
+    $(document).ready(function () {
+        // Инициализация поиска владельцев
+        $('#owner_search').select2({
+            ajax: {
+                url: $('#owner_search').data('ajax-url'),
+                dataType: 'json',
+                delay: 250,
+                data: function (params) {
+                    return {
+                        term: params.term
+                    };
+                },
+                processResults: function (data) {
+                    return {
+                        results: data
+                    };
+                },
+                cache: true
+            },
+            minimumInputLength: 2,
+            placeholder: 'Начните вводить ФИО владельца',
+            language: 'ru'
+        });
+
+        // Инициализация выбора животных
+        $('#pet_search').select2({
+            ajax: {
+                url: $('#pet_search').data('ajax-url'),
+                dataType: 'json',
+                delay: 250,
+                data: function () {
+                    return {
+                        owner_id: $('#owner_search').val()
+                    };
+                },
+                processResults: function (data) {
+                    return {
+                        results: data
+                    };
+                }
+            },
+            placeholder: 'Выберите животное',
+            language: 'ru',
+            disabled: true // Изначально отключаем, пока не выбран владелец
+        });
+
+        // При изменении выбора владельца
+        $('#owner_search').on('change', function () {
+            const ownerId = $(this).val();
+            const petSelect = $('#pet_search');
+
+            if (ownerId) {
+                petSelect.prop('disabled', false);
+                petSelect.val(null).trigger('change'); // Загружаем животных владельца
+            } else {
+                petSelect.prop('disabled', true);
+                petSelect.val(null);
             }
+        });
+        $('#pet_search').on('change', function () {
+            if ($('#vaccination_type').val()) {
+                checkPreviousVaccination();
+            }
+        });
+    });
+
+    function setNextDueDate() {
+        const dateAdministered = document.getElementById('date_administered').value;
+        if (dateAdministered) {
+            const date = new Date(dateAdministered);
+            date.setFullYear(date.getFullYear() + 1); // Устанавливаем +1 год
+            const nextDueDate = date.toISOString().split('T')[0]; // Форматируем в формат YYYY-MM-DD
+            document.getElementById('next_due_date').value = nextDueDate;
         }
+    }
 
-        // Если дата вакцинации уже установлена, рассчитываем и заполняем дату следующей вакцинации
-        window.onload = function() {
-            if (document.getElementById('date_administered').value) {
-                setNextDueDate();
-            }
-        };
-    </script>
-</body>
-</html>
+    // Если дата вакцинации уже установлена, рассчитываем и заполняем дату следующей вакцинации
+    window.onload = function () {
+        if (document.getElementById('date_administered').value) {
+            setNextDueDate();
+        }
+    };
+</script>
+{% endblock %}
+{% endblock %}

@@ -1,65 +1,121 @@
 {% extends "base.html" %}
 {% block title %}Добавить животное{% endblock %}
 {% block content %}
-  <h2>Добавить карточку животного</h2>
-  <form method="post">
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
+{% for category, message in messages %}
+<div class="alert alert-{{ 'danger' if category == 'error' else 'success' }}">
+    {{ message }}
+</div>
+{% endfor %}
+{% endif %}
+{% endwith %}
+<h2>Добавить карточку животного</h2>
+<form method="post">
     <div class="mb-3">
-      <label for="owner_id" class="form-label">Выберите владельца</label>
-      <select name="owner_id" id="owner_id" class="form-select" required>
-        <option value="">-- Выберите владельца --</option>
-        {% for owner in owners %}
-          <option value="{{ owner.id }}">{{ owner.name }} (ID: {{ owner.id }})</option>
-        {% endfor %}
-      </select>
+        <label for="owner_search" class="form-label">Поиск владельца</label>
+        <select class="form-select" id="owner_search" name="owner_id" required
+            data-ajax-url="{{ url_for('search_owners') }}">
+            {% if selected_owner %}
+            <option value="{{ selected_owner.id }}" selected>
+                {{ selected_owner.name }}
+            </option>
+            {% endif %}
+        </select>
     </div>
+
     <div class="mb-3">
-      <label for="name" class="form-label">Кличка</label>
-      <input type="text" class="form-control" name="name" id="name" required>
+        <label for="name" class="form-label">Кличка</label>
+        <input type="text" class="form-control" name="name" id="name" value="{{ form_data.name if form_data.name }}"
+            required>
     </div>
+
     <div class="mb-3">
-      <label for="card_number" class="form-label">Номер карточки</label>
-      <input type="text" class="form-control" name="card_number" id="card_number" required>
+        <label for="card_number" class="form-label">Номер карточки</label>
+        <input type="text" class="form-control" name="card_number" id="card_number"
+            value="{{ form_data.card_number if form_data.card_number }}" required>
     </div>
+
     <div class="mb-3">
-      <label for="species" class="form-label">Вид животного</label>
-      <input list="species_list" class="form-control" name="species" id="species" required>
-      <datalist id="species_list">
-        <option value="собака">
-        <option value="кот">
-        <option value="кролик">
-        <option value="хорёк">
-        <option value="крыса">
-      </datalist>
+        <label for="species" class="form-label">Вид животного</label>
+        <input list="species_list" class="form-control" name="species" id="species"
+            value="{{ form_data.species if form_data.species }}" required>
+        <datalist id="species_list">
+            <option value="собака">
+            <option value="кот">
+            <option value="кролик">
+            <option value="хорёк">
+            <option value="крыса">
+        </datalist>
     </div>
+
     <div class="mb-3">
-      <label for="gender" class="form-label">Пол</label>
-      <select name="gender" id="gender" class="form-select" required>
-        <option value="М">М</option>
-        <option value="Ж">Ж</option>
-        <option value="кастрат М">кастрат М</option>
-        <option value="кастрат Ж">кастрат Ж</option>
-      </select>
+        <label for="gender" class="form-label">Пол</label>
+        <select name="gender" id="gender" class="form-select" required>
+            <option value="М" {% if form_data.gender=="М" %}selected{% endif %}>М</option>
+            <option value="Ж" {% if form_data.gender=="Ж" %}selected{% endif %}>Ж</option>
+            <option value="кастрат М" {% if form_data.gender=="кастрат М" %}selected{% endif %}>кастрат М</option>
+            <option value="кастрат Ж" {% if form_data.gender=="кастрат Ж" %}selected{% endif %}>кастрат Ж</option>
+        </select>
     </div>
+
     <div class="mb-3">
-      <label for="breed" class="form-label">Порода</label>
-      <input type="text" class="form-control" name="breed" id="breed" required>
+        <label for="breed" class="form-label">Порода</label>
+        <input type="text" class="form-control" name="breed" id="breed" value="{{ form_data.breed if form_data.breed }}"
+            required>
     </div>
+
     <div class="mb-3">
-      <label for="coloration" class="form-label">Окрас</label>
-      <input type="text" class="form-control" name="coloration" id="coloration">
+        <label for="coloration" class="form-label">Окрас</label>
+        <input type="text" class="form-control" name="coloration" id="coloration"
+            value="{{ form_data.coloration if form_data.coloration }}">
     </div>
+
     <div class="mb-3">
-      <label for="birth_date" class="form-label">Дата рождения (ДД-MM-ГГГГ)</label>
-      <input type="text" class="form-control" name="birth_date" id="birth_date" placeholder="например, 31-12-2025" required>
+        <label for="birth_date" class="form-label">Дата рождения (ДД-MM-ГГГГ)</label>
+        <input type="text" class="form-control" name="birth_date" id="birth_date"
+            value="{{ form_data.birth_date if form_data.birth_date }}" required>
     </div>
+
     <div class="mb-3">
-      <label for="chronic_diseases" class="form-label">Хронические заболевания</label>
-      <textarea class="form-control" name="chronic_diseases" id="chronic_diseases"></textarea>
+        <label for="chronic_diseases" class="form-label">Хронические заболевания</label>
+        <textarea class="form-control" name="chronic_diseases" id="chronic_diseases">
+            {{ form_data.chronic_diseases if form_data.chronic_diseases }}
+        </textarea>
     </div>
+
     <div class="mb-3">
-      <label for="allergies" class="form-label">Аллергии</label>
-      <textarea class="form-control" name="allergies" id="allergies"></textarea>
+        <label for="allergies" class="form-label">Аллергии</label>
+        <textarea class="form-control" name="allergies" id="allergies">
+            {{ form_data.allergies if form_data.allergies }}
+        </textarea>
     </div>
-    <button type="submit" class="btn btn-primary">Добавить животное</button>
-  </form>
+
+    <button type="submit" class="btn btn-primary">Сохранить</button>
+</form>
+
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+<script>
+    $(document).ready(function () {
+        $('#owner_search').select2({
+            ajax: {
+                url: $('#owner_search').data('ajax-url'),
+                dataType: 'json',
+                delay: 250,
+                data: function (params) {
+                    return { term: params.term };
+                },
+                processResults: function (data) {
+                    return { results: data };
+                },
+                cache: true
+            },
+            minimumInputLength: 2,
+            placeholder: 'Начните вводить ФИО владельца',
+            language: 'ru'
+        });
+    });
+</script>
 {% endblock %}

@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Медицинская карта животного</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 0;
+        }
+
+        body {
+            font-family: "Times New Roman", serif;
+            margin: 0;
+            padding: 15mm;
+            font-size: 14pt;
+        }
+
+        .header {
+            text-align: center;
+            position: relative;
+            margin-bottom: 10mm;
+        }
+
+        .main-title {
+            font-size: 22pt;
+            font-weight: bold;
+            margin: 0;
+        }
+
+        .reg-number {
+            position: absolute;
+            right: 0;
+            top: 0;
+            font-weight: bold;
+        }
+
+        .reg-title {
+            font-weight: bold;
+            display: inline-block;
+            width: 40mm;
+        }
+
+        .field {
+            margin: 8mm 0;
+        }
+
+        .underline {
+            border-bottom: 1px solid black;
+            display: inline-block;
+            min-width: 120mm;
+            padding-bottom: 2mm;
+            margin-left: 5mm;
+        }
+
+        .inline-field {
+            display: inline-block;
+            margin-right: 15mm;
+        }
+
+        .gender-options {
+            display: inline-block;
+            margin-left: 5mm;
+        }
+
+        .gender-option {
+            display: inline-block;
+            margin-right: 5mm;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <h1 class="main-title">МЕДИЦИНСКАЯ КАРТА ЖИВОТНОГО</h1>
+        <div class="reg-number">Регистр. № {{ pet.card_number }}</div>
+    </div>
+
+    <div class="field">
+        <span class="reg-title">Номер идентификационного чипа/татуировки</span>
+        <span class="underline">{{ pet.chip_number or '' }}</span>
+    </div>
+
+    <div class="field">
+        <span class="reg-title">Ф.И.О. владельца</span>
+        <span class="underline">{{ owner.name }}</span>
+    </div>
+
+    <div class="field">
+        <span class="reg-title">Дом. адрес</span>
+        <span class="underline">{{ owner.address }}</span>
+    </div>
+
+    <div class="field">
+        <span class="reg-title">Моб. телефон</span>
+        <span class="underline">{{ owner.phone }}</span>
+        <span class="gender-options">
+            <span class="gender-option">Пол М {% if pet.gender == 'М' %}✓{% endif %}</span>
+            <span class="gender-option">Ж {% if pet.gender == 'Ж' %}✓{% endif %}</span>
+            <span class="gender-option">К.М {% if pet.gender == 'К.М' %}✓{% endif %}</span>
+            <span class="gender-option">К.Ж {% if pet.gender == 'К.Ж' %}✓{% endif %}</span>
+        </span>
+    </div>
+
+    <div class="field">
+        <span class="reg-title">Животное</span>
+        <span class="underline">{{ pet.species }}</span>
+        <span style="margin-left: 10mm;">Кличка</span>
+        <span class="underline">{{ pet.name }}</span>
+        <span style="margin-left: 10mm;">Порода</span>
+        <span class="underline">{{ pet.breed }}</span>
+    </div>
+
+    <div class="field">
+        <span class="reg-title">Окраска</span>
+        <span class="underline">{{ pet.coloration }}</span>
+        <span style="margin-left: 10mm;">Дата рождения</span>
+        <span class="underline">{{ pet.birth_date.strftime('%d.%m.%Y') }} г.</span>
+    </div>
+</body>
+
+</html>

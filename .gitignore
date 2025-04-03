@@ -1,2 +1,80 @@
-__pycache__/app.cpython-313.pyc
-__pycache__/models.cpython-313.pyc
+# Файлы Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Файлы IDE и редакторов
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+*.code-workspace
+
+# Файлы окружения и конфигурации
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+instance/
+*.ini
+*.cfg
+*.local
+
+# Файлы базы данных и логов
+*.db
+*.sqlite
+*.log
+*.pot
+
+# Файлы зависимостей
+node_modules/
+p ackage-lock.json
+package.json
+
+# Файлы документации
+docs/_build/
+
+# Файлы Windows
+Thumbs.db
+ehthumbs.db
+[Dd]esktop.ini
+$RECYCLE.BIN/
+
+# Файлы проекта
+/static/css/*.map
+/static/js/*.map
+/test_csv/
+/vac_for_test2.csv
+/card.docx
+/csv/
+
+# Исключения (не игнорировать)
+!requirements.txt
+!app.py
+!forms.py
+!models.py
+!csv_importer.py
+!templates/

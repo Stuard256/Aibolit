@@ -1,48 +1,111 @@
 {% extends "base.html" %}
 {% block title %}Список владельцев{% endblock %}
 {% block content %}
-  <h2>Список владельцев</h2>
-  
-  <form method="get" class="mb-3">
-    <div class="input-group">
-      <input type="text" name="search" class="form-control" placeholder="Поиск по ФИО" value="{{ search_query }}">
-      <button type="submit" class="btn btn-primary">Найти</button>
-      <a href="{{ url_for('owners_list') }}" class="btn btn-secondary">Сбросить</a>
+
+<h2>Список владельцев</h2>
+
+<form method="get" class="mb-3">
+  <div class="row g-3">
+    <div class="col-md-4">
+      <input type="text" name="search_name" class="form-control" placeholder="Часть ФИО владельца"
+        value="{{ search_name }}">
     </div>
-  </form>
-  
-  {% if owners %}
-    <table class="table table-bordered">
-      <thead>
-        <tr>
-          <th>ID</th>
-          <th>ФИО</th>
-          <th>Адрес</th>
-          <th>Мобильный телефон</th>
-          <th>Животные</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for owner in owners %}
-          <tr>
-            <td>{{ owner.id }}</td>
-            <td><a href="{{ url_for('owner_card', owner_id=owner.id) }}">{{ owner.name }}</a></td>
-            <td>{{ owner.address }}</td>
-            <td>{{ owner.phone }}</td>
-            <td>
-              {% if owner.pets %}
-                {% for pet in owner.pets %}
-                  <a href="{{ url_for('pet_card', pet_id=pet.id) }}">{{ pet.name }} ({{ pet.card_number }})</a>{% if not loop.last %}, {% endif %}
-                {% endfor %}
-              {% else %}
-                Нет животных
-              {% endif %}
-            </td>
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  {% else %}
-    <p>Нет владельцев.</p>
-  {% endif %}
+    <div class="col-md-4">
+      <input type="text" name="search_pet" class="form-control" placeholder="Часть клички животного"
+        value="{{ search_pet }}">
+    </div>
+    <div class="col-md-2">
+      <input type="text" name="search_card" class="form-control" placeholder="Номер карточки" value="{{ search_card }}"
+        pattern="\d+">
+    </div>
+    <div class="col-md-2">
+      <input type="text" name="search_phone" class="form-control" placeholder="Телефон владельца"
+        value="{{ search_phone }}">
+    </div>
+    <div class="col-md-12">
+      <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+        <a class="btn btn-secondary" href="{{ url_for('add_owner') }}">Добавить владельца</a>
+        <button type="submit" class="btn btn-primary me-md-2">Найти</button>
+        <a href="{{ url_for('owners_list') }}" class="btn btn-outline-secondary">Сбросить</a>
+      </div>
+    </div>
+  </div>
+</form>
+
+{% if owners %}
+<div class="table-responsive">
+  <table class="table table-bordered table-hover">
+    <thead class="table-light">
+      <tr>
+        <th>ФИО</th>
+        <th>Адрес</th>
+        <th>Телефон</th>
+        <th>Животные</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for owner in owners %}
+      <tr>
+        <td>
+          <a href="{{ url_for('owner_card', owner_id=owner.id) }}" class="text-decoration-none">
+            {{ owner.name }}
+          </a>
+        </td>
+        <td>{{ owner.address }}</td>
+        <td>{{ owner.phone }}</td>
+        <td>
+          {% if owner.pets %}
+          {% for pet in owner.pets %}
+          <a href="{{ url_for('pet_card', pet_id=pet.id) }}" class="text-decoration-none">
+            {{ pet.name }} ({{ pet.card_number }})
+          </a>{% if not loop.last %}, {% endif %}
+          {% endfor %}
+          {% else %}
+          <span class="text-muted">Нет животных</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Пагинация -->
+<nav aria-label="Page navigation">
+  <ul class="pagination justify-content-center">
+    {% if pagination.has_prev %}
+    <li class="page-item">
+      <a class="page-link" href="{{ url_for('owners_list', page=pagination.prev_num, 
+         search_name=search_name, search_pet=search_pet, 
+         search_card=search_card, search_phone=search_phone) }}">
+        Назад
+      </a>
+    </li>
+    {% endif %}
+
+    {% for page_num in pagination.iter_pages() %}
+    {% if page_num %}
+    <li class="page-item {% if page_num == pagination.page %}active{% endif %}">
+      <a class="page-link"
+        href="{{ url_for('owners_list', page=page_num, search_name=search_name, search_pet=search_pet) }}">
+        {{ page_num }}
+      </a>
+    </li>
+    {% else %}
+    <li class="page-item disabled"><span class="page-link">...</span></li>
+    {% endif %}
+    {% endfor %}
+
+    {% if pagination.has_next %}
+    <li class="page-item">
+      <a class="page-link" href="{{ url_for('owners_list', page=pagination.next_num, 
+             search_name=search_name, search_pet=search_pet,
+             search_card=search_card, search_phone=search_phone) }}">
+        Вперед
+      </a>
+    </li>
+    {% endif %}
+  </ul>
+</nav>
+{% endif %}
 {% endblock %}

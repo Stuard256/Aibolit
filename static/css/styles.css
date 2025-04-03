@@ -1,0 +1,7 @@
+#update-container {
+    z-index: 1000;
+}
+
+.toast {
+    min-width: 250px;
+}

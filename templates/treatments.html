@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Список назначений</h2>
+
+    <div class="mb-3">
+        <a href="{{ url_for('add_treatment') }}" class="btn btn-success">
+            <i class="bi bi-plus-circle"></i> Добавить новое
+        </a>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Название</th>
+                    <th>Категория</th>
+                    <th>Дозировка</th>
+                    <th>Цена</th>
+                    <th>Действия</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for treatment in treatments %}
+                <tr>
+                    <td>{{ treatment.name }}</td>
+                    <td>
+                        {% if treatment.category == 'vaccine' %}Вакцина
+                        {% elif treatment.category == 'medicine' %}Лекарство
+                        {% elif treatment.category == 'procedure' %}Процедура
+                        {% else %}Другое{% endif %}
+                    </td>
+                    <td>{{ treatment.dosage }} {{ treatment.unit }}</td>
+                    <td>{{ "%.2f"|format(treatment.price) }} руб.</td>
+                    <td>
+                        <a href="#" class="btn btn-sm btn-warning">
+                            <i class="bi bi-pencil"></i>
+                        </a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="5" class="text-center">Нет доступных назначений</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

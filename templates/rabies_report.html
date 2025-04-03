@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Отчёт по бешенству</title>
+    <style>
+        @page {
+            size: A4 landscape;
+            margin: 0.5in;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 15px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            font-size: 12px;
+        }
+
+        th,
+        td {
+            border: 1px solid #000;
+            padding: 5px;
+            text-align: center;
+        }
+
+        th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+
+        h2,
+        h3 {
+            margin: 5px 0;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <h2>ОПИСЬ</h2>
+        <h3>ЖИВОТНЫХ, ПРИНАДЛЕЖАЩИХ ЖИТЕЛЯМ г. БРЕСТА</h3>
+        <h3>БЕШЕНСТВО (вакцинация) В ВЕТЕРИНАРНОЙ ЛЕЧЕБНИЦЕ "АЙБОЛИТ"</h3>
+        <h3>в {{ start_date }} - {{ end_date }}</h3>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>No п/п</th>
+                <th>Дата</th>
+                <th>Фамилия, имя, отчество владельца</th>
+                <th>Адрес владельца</th>
+                <th>Вид животного</th>
+                <th>Порода</th>
+                <th>No жетона</th>
+                <th>Возраст животного</th>
+                <th>Дата предыдущей вакцинации</th>
+                <th>Доза, мл</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in report_data %}
+            <tr>
+                <td>{{ item.num }}</td>
+                <td>{{ item.date }}</td>
+                <td>{{ item.owner }}</td>
+                <td>{{ item.address }}</td>
+                <td>{{ item.animal }}</td>
+                <td>{{ item.breed }}</td>
+                <td></td>
+                <td>{{ item.age }}</td>
+                <td>{{ item.prev_vaccination }}</td>
+                <td>{{ item.dose }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+
+</html>

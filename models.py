@@ -1,4 +1,5 @@
 from datetime import datetime
+from dateutil.relativedelta import relativedelta
 from flask_sqlalchemy import SQLAlchemy
 
 db = SQLAlchemy()
@@ -8,7 +9,7 @@ class Owner(db.Model):
     name = db.Column(db.String(150), nullable=False)
     address = db.Column(db.String(250), nullable=False)
     phone = db.Column(db.String(50), nullable=False)
-    pets = db.relationship('Pet', backref='owner', lazy=True)
+    pets = db.relationship('Pet', backref='owner', lazy=True, cascade='all, delete-orphan')
     appointments = db.relationship('Appointment', backref='owner', lazy=True)
 
 class Pet(db.Model):
@@ -21,13 +22,26 @@ class Pet(db.Model):
     breed = db.Column(db.String(100), nullable=False)
     coloration = db.Column(db.String(100))
     birth_date = db.Column(db.Date, nullable=False)
-    chronic_diseases = db.Column(db.Text)
-    allergies = db.Column(db.Text)
+    chronic_diseases = db.Column(db.Text, default = '')
+    allergies = db.Column(db.Text, default = '')
     appointments = db.relationship('Appointment', backref='pet', lazy=True)
     vaccinations = db.relationship('Vaccination', backref='pet', lazy=True)  # Связь с вакцинациями
     def pet_age(self):
         today = datetime.today().date()
         return today.year - self.birth_date.year - ((today.month, today.day) < (self.birth_date.month, self.birth_date.day))
+    def vaccination_age(self, vaccination_date):
+        """Возраст на момент вакцинации в формате 'X г Y м Z д' с пропуском нулевых значений"""
+        delta = relativedelta(vaccination_date, self.birth_date)
+        
+        age_parts = []
+        if delta.years > 0:
+            age_parts.append(f"{delta.years} г")
+        if delta.months > 0:
+            age_parts.append(f"{delta.months} м")
+        if delta.days > 0:
+            age_parts.append(f"{delta.days} д")
+            
+        return " ".join(age_parts) if age_parts else "0 д"
 
 
 class Appointment(db.Model):
@@ -48,22 +62,57 @@ class Note(db.Model):
 
 class Vaccination(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    vaccine_name = db.Column(db.String(100), nullable=False)  # Название вакцины
-    date_administered = db.Column(db.Date, nullable=False)  # Дата вакцинации
-    next_due_date = db.Column(db.Date, nullable=True)  # Дата следующей вакцинации
-    pet_id = db.Column(db.Integer, db.ForeignKey('pet.id'), nullable=False)  # Связь с животным
-    owner_id = db.Column(db.Integer, db.ForeignKey('owner.id'), nullable=False)  # Связь с владельцем
-    vaccination_type = db.Column(db.String(50), nullable=False)  # Тип вакцинации
-    dose_ml = db.Column(db.Float)  # Доза вакцины в мл
-    previous_vaccination_date = db.Column(db.Date, nullable=True)  # Дата предыдущей вакцинации
-
-    # Дополнительные поля для отображения данных владельца и животного
-    owner_name = db.Column(db.String(150), nullable=False)  # Имя владельца
-    owner_address = db.Column(db.String(250), nullable=False)  # Адрес владельца
-    pet_species = db.Column(db.String(50), nullable=False)  # Вид животного
-    pet_breed = db.Column(db.String(100), nullable=False)  # Порода животного
-    pet_card_number = db.Column(db.String(50), nullable=False)  # Номер жетона животного
-    pet_age = db.Column(db.Integer, nullable=False)  # Возраст животного
-
+    vaccine_name = db.Column(db.String(100), nullable=False)
+    date_administered = db.Column(db.Date, nullable=False)
+    next_due_date = db.Column(db.Date, nullable=True)
+    pet_id = db.Column(db.Integer, db.ForeignKey('pet.id'), nullable=False)
+    owner_id = db.Column(db.Integer, db.ForeignKey('owner.id'), nullable=False)
+    vaccination_type = db.Column(db.String(50), nullable=False)
+    dose_ml = db.Column(db.Float)
+    previous_vaccination_date = db.Column(db.Date, nullable=True)
+    
+    # Делаем эти поля необязательными
+    owner_name = db.Column(db.String(150), nullable=True)
+    owner_address = db.Column(db.String(250), nullable=True)
+    pet_species = db.Column(db.String(50), nullable=True)
+    pet_breed = db.Column(db.String(100), nullable=True)
+    pet_card_number = db.Column(db.String(50), nullable=True)
+    pet_age = db.Column(db.Integer, nullable=True)
+    
     def __repr__(self):
         return f'<Vaccination {self.vaccine_name} for {self.pet.name}>'
+
+class Treatment(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(150), nullable=False, unique=True)  # Название назначения
+    category = db.Column(db.String(50), nullable=False)  # Вакцина, Лекарство, Процедура
+    dosage = db.Column(db.String(50))  # Стандартная дозировка (например "1 мл")
+    unit = db.Column(db.String(20), nullable=False)  # Единица измерения (мл, г, таблетка)
+    price = db.Column(db.Float, nullable=False)  # Цена за единицу
+    description = db.Column(db.Text)  # Дополнительное описание
+
+class TreatmentType(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False, unique=True)  # Например: "Вакцина", "Лекарство"
+    description = db.Column(db.Text)
+
+class TreatmentItem(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(150), nullable=False, unique=True)  # Например: "Вакцина от бешенства", "Антибиотик X"
+    treatment_type_id = db.Column(db.Integer, db.ForeignKey('treatment_type.id'), nullable=False)
+    treatment_type = db.relationship('TreatmentType', backref='items')
+    default_dosage = db.Column(db.String(50))  # Например: "1 мл", "100 мг"
+    unit_price = db.Column(db.Float, nullable=False)  # Цена за единицу
+    unit_measure = db.Column(db.String(20), nullable=False)  # Например: "мл", "г", "таблетка"
+    
+class AppointmentTreatment(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    appointment_id = db.Column(db.Integer, db.ForeignKey('appointment.id'), nullable=False)
+    treatment_item_id = db.Column(db.Integer, db.ForeignKey('treatment_item.id'), nullable=False)
+    treatment_item = db.relationship('TreatmentItem')
+    quantity = db.Column(db.Float, nullable=False)  # Количество единиц
+    total_price = db.Column(db.Float, nullable=False)  # quantity * unit_price
+    notes = db.Column(db.Text)
+
+# Добавим связь в модель Appointment
+Appointment.treatments = db.relationship('AppointmentTreatment', backref='appointment', lazy=True, cascade='all, delete-orphan')
