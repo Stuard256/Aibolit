@@ -93,7 +93,6 @@ def update_appointment_treatments(appointment_id):
                 treatment_id=treatment['id'],
                 quantity=treatment['quantity'],
                 total_price=treatment['total'],
-                notes=''
             )
             db.session.add(at)
         
@@ -341,62 +340,41 @@ def pet_search():
 
 @app.route('/save_treatments', methods=['POST'])
 def save_treatments():
+    data = request.json
+    pet_id = data.get('pet_id')
+    treatments = data.get('treatments')
+    
+    if not pet_id:
+        return jsonify({'error': 'Не выбран питомец'}), 400
+    
     try:
-        data = request.get_json()
-        if not data:
-            return jsonify({'error': 'No data provided'}), 400
-
-        pet_id = data.get('pet_id')
-        treatments = data.get('treatments', [])
-        
-        if not pet_id:
-            return jsonify({'error': 'Не выбран питомец'}), 400
-        
-        if not treatments:
-            return jsonify({'error': 'Нет назначений для сохранения'}), 400
-
         # Создаем новый прием
         appointment = Appointment(
-            appointment_date=datetime.now().date(),
-            time=datetime.now().time(),
+            appointment_date=datetime.now().strftime('%Y-%m-%d'),
+            time=datetime.now().strftime('%H:%M'),
             pet_id=pet_id,
             owner_id=Pet.query.get(pet_id).owner_id,
-            description="Назначения из калькулятора",
-            created_at=datetime.now()
+            description="Назначения из калькулятора"
         )
         db.session.add(appointment)
         db.session.flush()  # Получаем ID нового приема
         
         # Добавляем назначения
         for treatment in treatments:
-            # Проверяем существование лечения
-            if not Treatment.query.get(treatment['id']):
-                app.logger.warning(f"Лечение с ID {treatment['id']} не найдено")
-                continue
-                
             at = AppointmentTreatment(
                 appointment_id=appointment.id,
                 treatment_id=treatment['id'],
-                quantity=treatment.get('quantity', 1),
-                total_price=treatment.get('total', 0),
-                notes=treatment.get('notes', ''),
-                created_at=datetime.now()
-            )
+                quantity=treatment['quantity'],
+                total_price=treatment['total'],
+                notes=treatment.get('notes', '')
+            )   
             db.session.add(at)
         
         db.session.commit()
-        
-        app.logger.info(f"Сохранено {len(treatments)} назначений для приема {appointment.id}")
-        return jsonify({
-            'success': True,
-            'appointment_id': appointment.id
-        })
-        
+        return jsonify({'success': True})
     except Exception as e:
         db.session.rollback()
-        error_msg = f'Ошибка сохранения назначений: {str(e)}'
-        app.logger.error(error_msg, exc_info=True)
-        return jsonify({'error': error_msg}), 500
+        return jsonify({'error': str(e)}), 500
     
 
 @app.route('/add_treatment', methods=['GET', 'POST'])
@@ -644,12 +622,15 @@ def edit_vaccination(id):
 
 @app.route('/vaccination/delete/<int:id>', methods=['POST'])
 def delete_vaccination(id):
-    vaccination = Vaccination.query.get(id)
+    vaccination = Vaccination.query.get_or_404(id)
+    pet_id = vaccination.pet_id 
+    pet = Pet.query.get_or_404(pet_id)
+    owner = Owner.query.get_or_404(vaccination.owner_id)
     db.session.delete(vaccination)
     db.session.commit()
 
     flash("Запись о вакцинации успешно удалена!")
-    return redirect(url_for('vaccinations'))
+    return render_template('pet_card.html', pet = pet , owner = owner)
 
 @app.route('/delete_note/<int:note_id>')
 def delete_note(note_id):

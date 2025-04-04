@@ -10,7 +10,7 @@ class Owner(db.Model):
     address = db.Column(db.String(250), nullable=False)
     phone = db.Column(db.String(50), nullable=False)
     pets = db.relationship('Pet', backref='owner', lazy=True, cascade='all, delete-orphan')
-    appointments = db.relationship('Appointment', backref='owner', lazy=True)
+    appointments = db.relationship('Appointment', backref='owner', lazy=True ,  cascade='all, delete-orphan')
 
 class Pet(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -24,8 +24,8 @@ class Pet(db.Model):
     birth_date = db.Column(db.Date, nullable=False)
     chronic_diseases = db.Column(db.Text, default = '')
     allergies = db.Column(db.Text, default = '')
-    appointments = db.relationship('Appointment', backref='pet', lazy=True)
-    vaccinations = db.relationship('Vaccination', backref='pet', lazy=True)  # Связь с вакцинациями
+    appointments = db.relationship('Appointment', backref='pet', lazy=True,  cascade='all, delete-orphan')
+    vaccinations = db.relationship('Vaccination', backref='pet', lazy=True,  cascade='all, delete-orphan')  # Связь с вакцинациями
     def pet_age(self):
         today = datetime.today().date()
         return today.year - self.birth_date.year - ((today.month, today.day) < (self.birth_date.month, self.birth_date.day))

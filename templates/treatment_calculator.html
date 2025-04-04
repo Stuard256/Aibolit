@@ -19,8 +19,8 @@
                 <input type="number" step="0.1" min="0.1" class="form-control quantity" id="quantity"
                     placeholder="Кол-во" value="1">
             </div>
-            <div class="col-md-2">
-                <label for="dosage" class="form-label">Кол-во на ед. изм.</label>
+            <div class="col-md-1">
+                <label for="dosage" class="form-label">Кол-во на ед.</label>
                 <input type="number" class="form-control dosage" id="dosage" readonly>
             </div>
             <div class="col-md-1">
@@ -188,8 +188,8 @@
             $('.treatment-row').each(function () {
                 treatments.push({
                     id: $(this).data('id'),
-                    quantity: parseFloat($(this).find('td').eq(2).text()),
-                    total: parseFloat($(this).find('.row-total').text())
+                    quantity: parseFloat($(this).find('td').eq(1).text()) || 1,
+                    total: parseFloat($(this).find('.row-total').text()) || 0
                 });
             });
 
