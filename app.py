@@ -565,14 +565,27 @@ def new_vaccination():
             db.session.add(vaccination)
             db.session.commit()
             flash('Вакцинация успешно добавлена!', 'success')
-            return redirect(url_for('vaccinations'))
+            return render_template('pet_card.html', pet = pet , owner = owner)
             
         except Exception as e:
             db.session.rollback()
             flash(f'Ошибка при добавлении вакцинации: {str(e)}', 'danger')
             return redirect(request.url)
-    
-    return render_template('vaccination_form.html')
+    else:
+        # Обрабатываем GET-параметры
+        owner_id = request.args.get('owner_id')
+        pet_id = request.args.get('pet_id')
+        
+        selected_owner = Owner.query.get(owner_id) if owner_id else None
+        selected_pet = Pet.query.get(pet_id) if pet_id else None
+
+        return render_template(
+            'vaccination_form.html',
+            selected_owner=selected_owner,
+            selected_pet=selected_pet,
+            owner_id=owner_id,
+            pet_id=pet_id
+        )
 
 @app.route('/vaccination/edit/<int:id>', methods=['GET', 'POST'])
 def edit_vaccination(id):

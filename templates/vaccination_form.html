@@ -6,9 +6,11 @@
     </h1>
 
     <form method="POST" class="mt-4">
-        <div class="mb-3">
+        <input type="hidden" name="owner_id" value="{{ owner_id if owner_id else '' }}">
+        <input type="hidden" name="pet_id" value="{{ pet_id if pet_id else '' }}">
+        <div class="mb-3" {% if owner_id %}style="display:none" {% endif %}>
             <label for="owner_search" class="form-label">Владелец:</label>
-            <select class="form-select" id="owner_search" name="owner_id" required
+            <select class="form-select" id="owner_search" name="owner_id" {% if owner_id %}disabled{% endif %}
                 data-ajax-url="{{ url_for('search_owners') }}">
                 {% if selected_owner %}
                 <option value="{{ selected_owner.id }}" selected>
@@ -18,9 +20,10 @@
             </select>
         </div>
 
-        <div class="mb-3">
+        <div class="mb-3" {% if pet_id %}style="display:none" {% endif %}>
             <label for="pet_search" class="form-label">Животное:</label>
-            <select class="form-select" id="pet_search" name="pet_id" required data-ajax-url="/api/pets_by_owner">
+            <select class="form-select" id="pet_search" name="pet_id" {% if pet_id %}disabled{% endif %}
+                data-ajax-url="/api/pets_by_owner">
                 {% if selected_pet %}
                 <option value="{{ selected_pet.id }}" selected>
                     {{ selected_pet.name }} ({{ selected_pet.card_number }})
@@ -108,7 +111,40 @@
     }
 
     $(document).ready(function () {
-        // Инициализация поиска владельцев
+
+        const ownerData = {
+            id: "{{ selected_owner.id if selected_owner else '' }}",
+            name: "{{ selected_owner.name if selected_owner else '' }}"
+        };
+
+        const petData = {
+            id: "{{ selected_pet.id if selected_pet else '' }}",
+            name: "{{ selected_pet.name if selected_pet else '' }}",
+            card_number: "{{ selected_pet.card_number if selected_pet else '' }}"
+        };
+
+        if (ownerData.id) {
+            const ownerOption = new Option(
+                ownerData.name,
+                ownerData.id,
+                true,
+                true
+            );
+            $('#owner_search').append(ownerOption).trigger('change');
+            $('#owner_search').prop('disabled', true);
+        }
+
+        if (petData.id) {
+            const petOption = new Option(
+                `${petData.name} (${petData.card_number})`,
+                petData.id,
+                true,
+                true
+            );
+            $('#pet_search').append(petOption).trigger('change');
+            $('#pet_search').prop('disabled', true);
+        }
+
         $('#owner_search').select2({
             ajax: {
                 url: $('#owner_search').data('ajax-url'),
