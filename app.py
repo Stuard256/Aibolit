@@ -64,6 +64,54 @@ def init_scheduler():
     scheduler.start()
     return scheduler
 
+import re
+
+def normalize_phone(phone_str):
+    valid_numbers = []
+    invalid_numbers = []
+    
+    raw_numbers = re.split(r'[\s,;|]+', phone_str.strip())
+    
+    for num in raw_numbers:
+        if not num:
+            continue
+        
+        clean_num = re.sub(r'\D', '', num)
+        
+        if not clean_num:
+            invalid_numbers.append(num)
+            continue
+        
+        converted = None
+        
+        if len(clean_num) == 12 and clean_num.startswith('375'):
+            converted = clean_num
+        
+        elif len(clean_num) == 11 and clean_num.startswith('80'):
+            converted = '375' + clean_num[2:]
+        
+        elif len(clean_num) == 9:
+            converted = '375' + clean_num
+        
+        elif len(clean_num) == 7:
+            converted = '37529' + clean_num
+        
+        elif len(clean_num) == 6:
+            converted = '37517' + clean_num
+        
+        if converted and len(converted) == 12 and converted.startswith('375'):
+            valid_numbers.append(converted)
+        else:
+            invalid_numbers.append(num)
+    
+    valid_numbers = list(set(valid_numbers))
+    invalid_numbers = list(set(invalid_numbers))
+    
+    return {
+        'valid': valid_numbers,
+        'invalid': invalid_numbers
+    }
+
 @app.route('/', methods=['GET', 'POST'])    
 def index():
     notes = Note.query.order_by(Note.timestamp.desc()).all()  # Всегда загружаем заметки
@@ -506,7 +554,68 @@ def generate_report():
         response.headers['Content-Disposition'] = f'inline; filename=rabies_report_{start_date.date()}_{end_date.date()}.pdf'
         return response
     
-    return "Отчёт по всем вакцинациям (в разработке)"
+    elif report_type == 'all':
+        from dateutil.relativedelta import relativedelta
+        import io
+        import zipfile
+        from flask import send_file
+
+        # Рассчитываем период 11 месяцев назад
+        current_date = datetime.now()
+        target_date = current_date - relativedelta(months=11)
+        target_month = target_date.month
+        target_year = target_date.year
+
+        # Выбираем вакцинации за целевой месяц
+        vaccinations = Vaccination.query.filter(
+            db.extract('month', Vaccination.date_administered) == target_month,
+            db.extract('year', Vaccination.date_administered) == target_year
+        ).all()
+
+        # Собираем уникальных владельцев
+        owner_ids = {v.owner_id for v in vaccinations}
+        owners = Owner.query.filter(Owner.id.in_(owner_ids)).all()
+
+        # Обрабатываем телефоны
+        correct_phones = []
+        incorrect_phones = []
+        
+        for owner in owners:
+            result = normalize_phone(owner.phone)
+            correct_phones.extend(result['valid'])
+            incorrect_phones.extend(result['invalid'])
+
+        # Сортировка и форматирование
+        correct_phones = sorted(list(set(correct_phones)))
+        incorrect_phones = sorted(list(set(incorrect_phones)))
+
+        # Создаем ZIP архив
+        buffer = io.BytesIO()
+        with zipfile.ZipFile(buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+            # Файл с корректными номерами
+            if correct_phones:
+                zip_file.writestr(
+                    'correct_phones.txt', 
+                    '\n'.join(correct_phones).encode('utf-8')
+                )
+            
+            # Файл с некорректными номерами
+            if incorrect_phones:
+                zip_file.writestr(
+                    'incorrect_phones.txt', 
+                    '\n'.join(incorrect_phones).encode('utf-8')
+                )
+
+        buffer.seek(0)
+        return send_file(
+            buffer,
+            mimetype='application/zip',
+            as_attachment=True,
+            download_name=f'vaccination_phones_{target_date:%m_%Y}.zip'
+        )
+    else:
+        flash('Неизвестный тип отчета', 'error')
+        return redirect(url_for('vaccinations'))
 
 @app.route('/vaccinations')
 def vaccinations():
