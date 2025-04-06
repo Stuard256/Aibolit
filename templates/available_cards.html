@@ -40,7 +40,7 @@
             <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-5 row-cols-xl-6 g-2">
                 {% for number in available_numbers %}
                 <div class="col">
-                    <a href="{{ url_for('add_pet', card_number=number) }}" target="_blank"
+                    <a target="_blank"
                         class="card-number d-block text-decoration-none p-3 text-center rounded border hover-shadow"
                         title="Создать карточку с номером {{ number }}">
                         <span class="fs-4 fw-bold">{{ number }}</span>

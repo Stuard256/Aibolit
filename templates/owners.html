@@ -2,110 +2,171 @@
 {% block title %}Список владельцев{% endblock %}
 {% block content %}
 
-<h2>Список владельцев</h2>
+<div class="container-fluid">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0">Владельцы животных</h2>
+    <a class="btn btn-success" href="{{ url_for('add_owner') }}">
+      <i class="bi bi-plus-lg"></i> Добавить владельца
+    </a>
+  </div>
 
-<form method="get" class="mb-3">
-  <div class="row g-3">
-    <div class="col-md-4">
-      <input type="text" name="search_name" class="form-control" placeholder="Часть ФИО владельца"
-        value="{{ search_name }}">
-    </div>
-    <div class="col-md-4">
-      <input type="text" name="search_pet" class="form-control" placeholder="Часть клички животного"
-        value="{{ search_pet }}">
-    </div>
-    <div class="col-md-2">
-      <input type="text" name="search_card" class="form-control" placeholder="Номер карточки" value="{{ search_card }}"
-        pattern="\d+">
-    </div>
-    <div class="col-md-2">
-      <input type="text" name="search_phone" class="form-control" placeholder="Телефон владельца"
-        value="{{ search_phone }}">
-    </div>
-    <div class="col-md-12">
-      <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-        <a class="btn btn-secondary" href="{{ url_for('add_owner') }}">Добавить владельца</a>
-        <button type="submit" class="btn btn-primary me-md-2">Найти</button>
-        <a href="{{ url_for('owners_list') }}" class="btn btn-outline-secondary">Сбросить</a>
-      </div>
+  <!-- Поисковая форма -->
+  <div class="card shadow-sm mb-4">
+    <div class="card-body">
+      <form method="get" class="row g-3 align-items-center">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <div class="col-md-4">
+          <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-person"></i></span>
+            <input type="text" name="search_name" class="form-control" placeholder="Поиск по ФИО"
+              value="{{ search_name }}">
+          </div>
+        </div>
+
+        <div class="col-md-3">
+          <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-phone"></i></span>
+            <input type="text" name="search_phone" class="form-control" placeholder="Телефон"
+              value="{{ search_phone }}">
+          </div>
+        </div>
+
+        <div class="col-md-3">
+          <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-card-list"></i></span>
+            <input type="text" name="search_card" class="form-control" placeholder="Номер карточки"
+              value="{{ search_card }}">
+          </div>
+        </div>
+
+        <div class="col-md-2">
+          <div class="d-grid gap-2">
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-search"></i> Найти
+            </button>
+          </div>
+        </div>
+      </form>
     </div>
   </div>
-</form>
 
-{% if owners %}
-<div class="table-responsive">
-  <table class="table table-bordered table-hover">
-    <thead class="table-light">
-      <tr>
-        <th>ФИО</th>
-        <th>Адрес</th>
-        <th>Телефон</th>
-        <th>Животные</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for owner in owners %}
-      <tr>
-        <td>
-          <a href="{{ url_for('owner_card', owner_id=owner.id) }}" class="text-decoration-none">
-            {{ owner.name }}
-          </a>
-        </td>
-        <td>{{ owner.address }}</td>
-        <td>{{ owner.phone }}</td>
-        <td>
+  {% if owners %}
+  <!-- Список владельцев -->
+  <div class="row g-4">
+    {% for owner in owners %}
+    <div class="col-md-6">
+      <div class="card shadow-sm h-100">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-start mb-3">
+            <h5 class="card-title mb-0">
+              <a href="{{ url_for('owner_card', owner_id=owner.id) }}" class="text-decoration-none text-dark">
+                {{ owner.name }}
+              </a>
+            </h5>
+            <span class="badge bg-primary">
+              {{ owner.pets|length }}
+              {% if owner.pets|length == 1 %}животное{% else %}животных{% endif %}
+            </span>
+          </div>
+
+          <div class="mb-3">
+            <div class="d-flex align-items-center mb-2">
+              <i class="bi bi-telephone me-2"></i>
+              <span>{{ owner.phone }}</span>
+            </div>
+          </div>
+
           {% if owner.pets %}
-          {% for pet in owner.pets %}
-          <a href="{{ url_for('pet_card', pet_id=pet.id) }}" class="text-decoration-none">
-            {{ pet.name }} ({{ pet.card_number }})
-          </a>{% if not loop.last %}, {% endif %}
-          {% endfor %}
-          {% else %}
-          <span class="text-muted">Нет животных</span>
+          <div class="border-top pt-3">
+            <h6 class="text-muted mb-3">Животные:</h6>
+            <div class="d-flex flex-wrap gap-2">
+              {% for pet in owner.pets %}
+              <div class="bg-light rounded-pill px-3 py-1">
+                {{ pet.name }} ({{ pet.card_number }})
+              </div>
+              {% endfor %}
+            </div>
+          </div>
           {% endif %}
-        </td>
-      </tr>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Пагинация -->
+  <nav class="mt-4">
+    <ul class="pagination justify-content-center">
+      {% if pagination.has_prev %}
+      <li class="page-item">
+        <a class="page-link" href="{{ url_for('owners_list', page=pagination.prev_num, 
+                   search_name=search_name, search_phone=search_phone, 
+                   search_card=search_card) }}">
+          <i class="bi bi-chevron-left"></i>
+        </a>
+      </li>
+      {% endif %}
+
+      {% for page_num in pagination.iter_pages() %}
+      {% if page_num %}
+      <li class="page-item {% if page_num == pagination.page %}active{% endif %}">
+        <a class="page-link" href="{{ url_for('owners_list', page=page_num, 
+                   search_name=search_name, search_phone=search_phone, 
+                   search_card=search_card) }}">
+          {{ page_num }}
+        </a>
+      </li>
+      {% else %}
+      <li class="page-item disabled">
+        <span class="page-link">...</span>
+      </li>
+      {% endif %}
       {% endfor %}
-    </tbody>
-  </table>
+
+      {% if pagination.has_next %}
+      <li class="page-item">
+        <a class="page-link" href="{{ url_for('owners_list', page=pagination.next_num, 
+                   search_name=search_name, search_phone=search_phone, 
+                   search_card=search_card) }}">
+          <i class="bi bi-chevron-right"></i>
+        </a>
+      </li>
+      {% endif %}
+    </ul>
+  </nav>
+  {% else %}
+  <div class="alert alert-info mt-4">
+    <i class="bi bi-info-circle"></i> Ничего не найдено
+  </div>
+  {% endif %}
 </div>
 
-<!-- Пагинация -->
-<nav aria-label="Page navigation">
-  <ul class="pagination justify-content-center">
-    {% if pagination.has_prev %}
-    <li class="page-item">
-      <a class="page-link" href="{{ url_for('owners_list', page=pagination.prev_num, 
-         search_name=search_name, search_pet=search_pet, 
-         search_card=search_card, search_phone=search_phone) }}">
-        Назад
-      </a>
-    </li>
-    {% endif %}
+<style>
+  .card {
+    transition: transform 0.2s, box-shadow 0.2s;
+    border-radius: 15px;
+  }
 
-    {% for page_num in pagination.iter_pages() %}
-    {% if page_num %}
-    <li class="page-item {% if page_num == pagination.page %}active{% endif %}">
-      <a class="page-link"
-        href="{{ url_for('owners_list', page=page_num, search_name=search_name, search_pet=search_pet) }}">
-        {{ page_num }}
-      </a>
-    </li>
-    {% else %}
-    <li class="page-item disabled"><span class="page-link">...</span></li>
-    {% endif %}
-    {% endfor %}
+  .card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);
+  }
 
-    {% if pagination.has_next %}
-    <li class="page-item">
-      <a class="page-link" href="{{ url_for('owners_list', page=pagination.next_num, 
-             search_name=search_name, search_pet=search_pet,
-             search_card=search_card, search_phone=search_phone) }}">
-        Вперед
-      </a>
-    </li>
-    {% endif %}
-  </ul>
-</nav>
-{% endif %}
+  .badge {
+    font-size: 0.9rem;
+    padding: 0.5em 0.75em;
+  }
+
+  .page-link {
+    border-radius: 10px !important;
+    margin: 0 3px;
+  }
+
+  .rounded-pill {
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+  }
+</style>
+
 {% endblock %}

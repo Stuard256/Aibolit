@@ -6,7 +6,8 @@
 
 <div class="container mt-5">
     <!-- Форма для добавления заметок -->
-    <form method="post" action="{{ url_for('index') }}" class="mb-3">
+    <form method="post" action="{{ url_for('index') }}" class="mb-3" enctype="application/x-www-form-urlencoded">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="mb-3">
             <textarea class="form-control" name="note" placeholder="Введите заметку" required></textarea>
         </div>

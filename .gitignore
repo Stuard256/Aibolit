@@ -70,6 +70,7 @@ $RECYCLE.BIN/
 /vac_for_test2.csv
 /card.docx
 /csv/
+instance/
 
 # Исключения (не игнорировать)
 !requirements.txt
@@ -78,3 +79,6 @@ $RECYCLE.BIN/
 !models.py
 !csv_importer.py
 !templates/
+instance/vet_clinic.db
+test_.csv
+.gitignore

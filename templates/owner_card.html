@@ -1,48 +1,434 @@
 {% extends "base.html" %}
 {% block title %}Карточка владельца{% endblock %}
 {% block content %}
-<h2>Карточка владельца</h2>
-<form method="post">
-  <div class="mb-3">
-    <label for="name" class="form-label">ФИО</label>
-    <input type="text" class="form-control" name="name" id="name" value="{{ owner.name }}" required>
-  </div>
-  <div class="mb-3">
-    <label for="address" class="form-label">Адрес</label>
-    <input type="text" class="form-control" name="address" id="address" value="{{ owner.address }}" required>
-  </div>
-  <div class="mb-3">
-    <label for="phone" class="form-label">Мобильный телефон</label>
-    <input type="text" class="form-control" name="phone" id="phone" value="{{ owner.phone }}" required>
-  </div>
-  <button type="submit" class="btn btn-primary">Сохранить изменения</button>
-</form>
+<style>
+  .card-header {
+    transition: background-color 0.2s;
+  }
 
-<div class="mt-4 border-top pt-3">
-  <form method="POST" action="{{ url_for('delete_owner', owner_id=owner.id) }}" onsubmit="return confirmDeleteOwner()"
-    class="d-inline">
-    <button type="submit" class="btn btn-danger">
-      <i class="bi bi-trash"></i> Удалить владельца и всех животных
-    </button>
-  </form>
+  .table-hover tbody tr:hover {
+    background-color: #f8f9fa;
+  }
+
+  .form-control:disabled {
+    background-color: #f8f9fa;
+  }
+
+  #addPetForm {
+    display: none;
+    margin: 2rem 0;
+    padding: 2rem;
+    border: 1px solid #dee2e6;
+    border-radius: 0.5rem;
+    background-color: #fff;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.05);
+  }
+
+  .pet-card {
+    margin-bottom: 2rem;
+    transition: transform 0.2s;
+  }
+
+  .pet-card:hover {
+    transform: translateY(-2px);
+  }
+
+  .button-group {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-top: 1.5rem;
+  }
+
+  .section-title {
+    font-size: 1.25rem;
+    margin-bottom: 1.5rem;
+    color: #2c3e50;
+    border-bottom: 2px solid #3498db;
+    padding-bottom: 0.5rem;
+  }
+
+  .form-section {
+    margin-bottom: 1.5rem;
+    padding: 1.5rem;
+    background: #f8f9fa;
+    border-radius: 0.5rem;
+  }
+</style>
+<div class="container-fluid">
+  <!-- Блок владельца в горизонтальной раскладке -->
+  <div class="card mb-4 shadow-sm">
+    <div class="card-header bg-primary text-white">
+      <h4 class="mb-0"><i class="bi bi-person-badge"></i> Информация о владельце</h4>
+    </div>
+    <div class="card-body">
+      <form method="post" class="row g-3" enctype="application/x-www-form-urlencoded">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="col-md-4">
+          <label for="owner-name" class="form-label">ФИО</label>
+          <input type="text" class="form-control" name="name" value="{{ owner.name }}" required>
+        </div>
+        <div class="col-md-4">
+          <label for="address" class="form-label">Адрес</label>
+          <input type="text" class="form-control" name="address" value="{{ owner.address }}" required>
+        </div>
+        <div class="col-md-4">
+          <label for="phone" class="form-label">Телефон</label>
+          <input type="text" class="form-control" name="phone" value="{{ owner.phone }}" required>
+        </div>
+        <div class="col-12">
+          <div class="d-flex justify-content-between align-items-center">
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-save"></i> Сохранить изменения
+            </button>
+            <div>
+              <button type="submit" formaction="{{ url_for('delete_owner', owner_id=owner.id) }}" class="btn btn-danger"
+                onclick="return confirmDeleteOwner()">
+                <i class="bi bi-trash"></i> Удалить
+              </button>
+            </div>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+  <button class="btn btn-success mb-3" onclick="togglePetForm()">
+    <i class="bi bi-plus-circle"></i> Добавить животное
+  </button>
+
+  <!-- Форма добавления животного -->
+  <div id="addPetForm" class="card mb-4 shadow-sm">
+    <div class="card-header bg-secondary text-white">
+      <h5 class="mb-0">
+        <i class="bi bi-plus-circle"></i>
+        Добавление нового животного
+      </h5>
+    </div>
+
+    <div class="card-body">
+      <form method="POST" action="{{ url_for('add_pet') }}" enctype="application/x-www-form-urlencoded">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="owner_id" value="{{ owner.id }}">
+
+        <div class="row">
+          <!-- Левая колонка - Основная информация -->
+          <div class="col-md-6 border-end pe-4">
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label">Кличка</label>
+                <input type="text" class="form-control" name="name" required>
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label">Номер карточки</label>
+                <input type="text" class="form-control" name="card_number" required>
+              </div>
+
+              <div class="col-md-4">
+                <label class="form-label">Вид</label>
+                <input list="species_list" class="form-control" name="species" required>
+                <datalist id="species_list">
+                  <option>Собака</option>
+                  <option>Кот</option>
+                  <option>Кролик</option>
+                  <option>Хомяк</option>
+                  <option>Крыса</option>
+                </datalist>
+              </div>
+
+              <div class="col-md-4">
+                <label class="form-label">Пол</label>
+                <select name="gender" class="form-select" required>
+                  <option value="М">Мужской</option>
+                  <option value="Ж">Женский</option>
+                  <option value="кастрат М">Кастрат мужской</option>
+                  <option value="кастрат Ж">Кастрат женский</option>
+                </select>
+              </div>
+
+              <div class="col-md-4">
+                <label class="form-label">Порода</label>
+                <input type="text" class="form-control" name="breed" required>
+              </div>
+
+              <div class="col-12">
+                <div class="row g-3">
+                  <div class="col-md-6">
+                    <label class="form-label">Дата рождения</label>
+                    <input type="date" class="form-control" name="birth_date" required>
+                  </div>
+
+                  <div class="col-md-6">
+                    <label class="form-label">Возраст</label>
+                    <input type="text" class="form-control" value="Рассчитывается автоматически" disabled>
+                  </div>
+                </div>
+              </div>
+
+              <div class="col-12">
+                <label class="form-label">Особенности</label>
+                <div class="row g-2">
+                  <div class="col-md-6">
+                    <textarea class="form-control" name="chronic_diseases" rows="3"
+                      placeholder="Хронические заболевания"></textarea>
+                  </div>
+                  <div class="col-md-6">
+                    <textarea class="form-control" name="allergies" rows="3" placeholder="Аллергии"></textarea>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Правая колонка - Медицинская информация -->
+          <div class="col-md-6 ps-4">
+            <div class="mb-4">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6><i class="bi bi-syringe"></i> Вакцинации</h6>
+                <span class="text-muted">Доступно после сохранения</span>
+              </div>
+              <div class="alert alert-info py-2 mb-0">
+                Добавьте сначала основную информацию о животном
+              </div>
+            </div>
+
+            <div class="border-top pt-3">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6><i class="bi bi-calendar-check"></i> Записи на приём</h6>
+                <span class="text-muted">Доступно после сохранения</span>
+              </div>
+              <div class="alert alert-info py-2 mb-0">
+                Добавьте сначала основную информацию о животном
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="button-group mt-4">
+          <button type="submit" class="btn btn-primary">
+            <i class="bi bi-save"></i> Сохранить
+          </button>
+          <button type="button" class="btn btn-outline-secondary" onclick="togglePetForm()">
+            <i class="bi bi-x-circle"></i> Отмена
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Блоки с животными -->
+  {% for pet in owner.pets %}
+  <div class="card mb-4 shadow-sm">
+    <div class="card-header bg-secondary text-white">
+      <h5 class="mb-0">
+        <i class="bi bi-heart-pulse"></i>
+        {{ pet.name }} ({{ pet.species }}, {{ pet.breed }})
+        <small class="fs-6">Карта №{{ pet.card_number }}</small>
+      </h5>
+    </div>
+
+    <div class="card-body">
+      <div class="row">
+        <!-- Левая колонка - Основная информация -->
+        <div class="col-md-6 border-end">
+          <form method="POST" action="{{ url_for('pet_card', pet_id=pet.id) }}"
+            enctype="application/x-www-form-urlencoded">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label">Кличка</label>
+                <input type="text" class="form-control" name="name" value="{{ pet.name }}" required>
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label">Номер карточки</label>
+                <input type="text" class="form-control" name="card_number" value="{{ pet.card_number }}" required>
+              </div>
+
+              <div class="col-md-4">
+                <label class="form-label">Вид</label>
+                <input list="species_list" class="form-control" name="species" value="{{ pet.species }}" required>
+                <datalist id="species_list">
+                  <option>Собака</option>
+                  <option>Кот</option>
+                  <option>Кролик</option>
+                  <option>Хомяк</option>
+                  <option>Крыса</option>
+                </datalist>
+              </div>
+
+              <div class="col-md-4">
+                <label class="form-label">Пол</label>
+                <select name="gender" class="form-select" required>
+                  <option value="М" {% if pet.gender=="М" %}selected{% endif %}>Мужской</option>
+                  <option value="Ж" {% if pet.gender=="Ж" %}selected{% endif %}>Женский</option>
+                  <option value="кастрат М" {% if pet.gender=="КМ" %}selected{% endif %}>Кастрат мужской</option>
+                  <option value="кастрат Ж" {% if pet.gender=="КЖ" %}selected{% endif %}>Кастрат женский</option>
+                </select>
+              </div>
+
+              <div class="col-md-4">
+                <label class="form-label">Порода</label>
+                <input type="text" class="form-control" name="breed" value="{{ pet.breed }}" required>
+              </div>
+
+              <div class="col-12">
+                <div class="row g-3">
+                  <div class="col-md-6">
+                    <label class="form-label">Дата рождения</label>
+                    <input type="date" class="form-control" name="birth_date"
+                      value="{{ pet.birth_date.strftime('%Y-%m-%d') }}" required>
+                  </div>
+
+                  <div class="col-md-6">
+                    <label class="form-label">Возраст</label>
+                    <input type="text" class="form-control" value="{{ pet.pet_formatted_age() }}" disabled>
+                  </div>
+                </div>
+              </div>
+
+              <div class="col-12">
+                <label class="form-label">Особенности</label>
+                <div class="row g-2">
+                  <div class="col-md-6">
+                    <textarea class="form-control" name="chronic_diseases" rows="3"
+                      placeholder="Хронические заболевания">{{ pet.chronic_diseases }}</textarea>
+                  </div>
+                  <div class="col-md-6">
+                    <textarea class="form-control" name="allergies" rows="3"
+                      placeholder="Аллергии">{{ pet.allergies }}</textarea>
+                  </div>
+                </div>
+              </div>
+
+              <div class="col-12">
+                <div class="button-group">
+                  <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-save"></i> Сохранить
+                  </button>
+          </form>
+          <a href="{{ url_for('print_pet_card', pet_id=pet.id) }}" class="btn btn-outline-secondary" target="_blank">
+            <i class="bi bi-printer"></i> Печать
+          </a>
+          <form method="POST" action="{{ url_for('delete_pet', pet_id=pet.id) }}" class="d-inline"
+            enctype="application/x-www-form-urlencoded" onsubmit="return confirm('Удалить этого питомца?')">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-danger">
+              <i class="bi bi-trash"></i>
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Правая колонка - Медицинская информация -->
+  <div class="col-md-6">
+    <!-- Вакцинации -->
+    <div class="mb-4">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h6><i class="bi bi-syringe"></i> Вакцинации</h6>
+        <a href="{{ url_for('new_vaccination', pet_id=pet.id, owner_id=owner.id) }}" class="btn btn-sm btn-success">
+          <i class="bi bi-plus-lg"></i> Добавить
+        </a>
+      </div>
+
+      {% if pet.vaccinations %}
+      <div class="table-responsive">
+        <table class="table table-sm table-hover">
+          <thead class="table-light">
+            <tr>
+              <th>Дата</th>
+              <th>Тип</th>
+              <th>Препарат</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for vac in pet.vaccinations|sort(attribute='date_administered', reverse=True) %}
+            <tr>
+              <td>{{ vac.date_administered.strftime('%d.%m.%Y') }}</td>
+              <td>{{ vac.vaccination_type }}</td>
+              <td>{{ vac.vaccine_name }}</td>
+              <td class="text-end">
+                <a href="{{ url_for('edit_vaccination', id=vac.id) }}" class="btn btn-sm btn-outline-primary">
+                  <i class="bi bi-pencil"></i>
+                </a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="alert alert-warning py-2 mb-0">Нет данных о вакцинациях</div>
+      {% endif %}
+    </div>
+
+    <!-- Приёмы -->
+    <div class="border-top pt-3">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h6><i class="bi bi-calendar-check"></i> Записи на приём</h6>
+        <a href="{{ url_for('new_appointment', pet_id=pet.id, owner_id=owner.id) }}" class="btn btn-sm btn-success">
+          <i class="bi bi-plus-lg"></i> Новая
+        </a>
+      </div>
+
+      {% if pet.appointments %}
+      <div class="table-responsive">
+        <table class="table table-sm table-hover">
+          <thead class="table-light">
+            <tr>
+              <th>Дата</th>
+              <th>Время</th>
+              <th>Описание</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for app in pet.appointments|sort(attribute='appointment_date', reverse=True) %}
+            <tr>
+              <td>{{ app.appointment_date }}</td>
+              <td>{{ app.time }}</td>
+              <td>{{ app.description|truncate(30) }}</td>
+              <td class="text-end">
+                <a href="{{ url_for('appointment_details', appointment_id=app.id) }}"
+                  class="btn btn-sm btn-outline-primary">
+                  <i class="bi bi-eye"></i>
+                </a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="alert alert-warning py-2 mb-0">Нет предстоящих приёмов</div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+</div>
+</div>
+{% else %}
+<div class="alert alert-info">Нет зарегистрированных животных</div>
+{% endfor %}
 </div>
 
-<h3 class="mt-4">Животные владельца</h3>
-{% if owner.pets %}
-<ul class="list-group">
-  {% for pet in owner.pets %}
-  <li class="list-group-item">
-    <a href="{{ url_for('pet_card', pet_id=pet.id) }}">{{ pet.name }} ({{ pet.card_number }})</a>
-  </li>
-  {% endfor %}
-</ul>
-{% else %}
-<p>Нет животных.</p>
-{% endif %}
-
 <script>
-  function confirmDeleteOwner() {
-    return confirm('Вы уверены, что хотите удалить владельца и ВСЕХ его животных? Это действие нельзя отменить!');
+
+  function togglePetForm() {
+    const form = document.getElementById('addPetForm');
+    form.style.display = form.style.display === 'none' ? 'block' : 'none';
+    window.scrollTo({
+      top: form.offsetTop - 20,
+      behavior: 'smooth'
+    });
   }
+
+  function confirmDeleteOwner() {
+    return confirm('Удалить владельца и всех животных? Это действие необратимо!');
+  }
+
 </script>
 {% endblock %}

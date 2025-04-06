@@ -5,7 +5,8 @@
     <h1 class="text-center">{% if vaccination %}Редактировать вакцинацию{% else %}Добавить новую вакцинацию{% endif %}
     </h1>
 
-    <form method="POST" class="mt-4">
+    <form method="POST" class="mt-4" enctype="application/x-www-form-urlencoded">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="owner_id" value="{{ owner_id if owner_id else '' }}">
         <input type="hidden" name="pet_id" value="{{ pet_id if pet_id else '' }}">
         <div class="mb-3" {% if owner_id %}style="display:none" {% endif %}>

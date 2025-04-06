@@ -4,7 +4,8 @@
 <div class="container mt-4">
     <h2 class="mb-4">{% if appointment %}Редактирование приёма{% else %}Новый приём{% endif %}</h2>
 
-    <form method="POST">
+    <form method="POST" enctype="application/x-www-form-urlencoded">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="row">
             <!-- Левая колонка - Основная информация -->
             <div class="col-md-6">

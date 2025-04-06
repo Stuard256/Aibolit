@@ -1,20 +1,21 @@
 {% extends "base.html" %}
 {% block title %}Добавить владельца{% endblock %}
 {% block content %}
-  <h2>Добавить карточку владельца</h2>
-  <form method="post">
-    <div class="mb-3">
-      <label for="name" class="form-label">ФИО</label>
-      <input type="text" class="form-control" name="name" id="name" required>
-    </div>
-    <div class="mb-3">
-      <label for="address" class="form-label">Адрес</label>
-      <input type="text" class="form-control" name="address" id="address" required>
-    </div>
-    <div class="mb-3">
-      <label for="phone" class="form-label">Мобильный телефон</label>
-      <input type="text" class="form-control" name="phone" id="phone" required>
-    </div>
-    <button type="submit" class="btn btn-primary">Добавить владельца</button>
-  </form>
+<h2>Добавить карточку владельца</h2>
+<form method="POST" enctype="application/x-www-form-urlencoded">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div class="mb-3">
+    <label for="name" class="form-label">ФИО</label>
+    <input type="text" class="form-control" name="name" id="name" required>
+  </div>
+  <div class="mb-3">
+    <label for="address" class="form-label">Адрес</label>
+    <input type="text" class="form-control" name="address" id="address" required>
+  </div>
+  <div class="mb-3">
+    <label for="phone" class="form-label">Мобильный телефон</label>
+    <input type="text" class="form-control" name="phone" id="phone" required>
+  </div>
+  <button type="submit" class="btn btn-primary">Добавить владельца</button>
+</form>
 {% endblock %}
