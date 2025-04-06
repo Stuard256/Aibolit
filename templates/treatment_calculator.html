@@ -6,6 +6,7 @@
 <input type="hidden" id="initial-pet-id" value="{{ pet_id or '' }}">
 
 <div id="treatment-calculator">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <!-- Форма для поиска и добавления назначений -->
     <div class="treatment-entry mb-3">
         <div class="row g-3">
@@ -209,6 +210,9 @@
                 url: url,
                 method: 'POST',
                 contentType: 'application/json',
+                headers: {
+                    'X-CSRFToken': $('input[name="csrf_token"]').val()  // Добавляем CSRF-токен
+                },
                 data: JSON.stringify({
                     pet_id: petId,
                     treatments: treatments
