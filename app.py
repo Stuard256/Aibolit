@@ -208,10 +208,25 @@ def available_card_numbers():
     next_number = max_number + 1
     available_numbers.append(next_number)
     
-    return render_template('available_cards.html', 
-                         available_numbers=available_numbers,
-                         min_number=min_number,
-                         max_number=max_number)
+    total_available = len(available_numbers)
+    has_more = total_available > 50
+    
+    if has_more:
+        first_25 = available_numbers[:25]
+        last_25 = available_numbers[-25:]
+    else:
+        first_25 = available_numbers
+        last_25 = []
+
+    return render_template(
+        'available_cards.html',
+        first_25=first_25,
+        last_25=last_25,
+        has_more=has_more,
+        total_available=total_available,
+        min_number=min_number,
+        max_number=max_number
+    )
 
 @app.route('/edit_treatment/<int:treatment_id>', methods=['GET', 'POST'])
 def edit_treatment(treatment_id):

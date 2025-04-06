@@ -14,9 +14,6 @@
         </div>
 
         <div class="btn-group">
-            <a href="{{ url_for('add_pet') }}" class="btn btn-primary" target="_blank">
-                <i class="bi bi-plus-circle me-1"></i> Добавить животное
-            </a>
             <a href="{{ url_for('add_owner') }}" class="btn btn-outline-primary" target="_blank">
                 <i class="bi bi-person-plus me-1"></i> Добавить владельца
             </a>
@@ -29,16 +26,36 @@
                 <h5 class="mb-0">
                     <i class="bi bi-check2-circle me-2"></i>Доступные номера карточек
                 </h5>
-                <span class="badge bg-primary rounded-pill">
-                    {{ available_numbers|length }} свободных
-                </span>
             </div>
         </div>
 
         <div class="card-body">
-            {% if available_numbers %}
+            {% if first_25 %}
             <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-5 row-cols-xl-6 g-2">
-                {% for number in available_numbers %}
+                <!-- Первые 25 номеров -->
+                {% for number in first_25 %}
+                <div class="col">
+                    <a target="_blank"
+                        class="card-number d-block text-decoration-none p-3 text-center rounded border hover-shadow"
+                        title="Создать карточку с номером {{ number }}">
+                        <span class="fs-4 fw-bold">{{ number }}</span>
+                        <div class="text-muted small mt-1">Свободен</div>
+                    </a>
+                </div>
+                {% endfor %}
+
+                <!-- Разделитель -->
+                {% if has_more %}
+                <div class="col-12 text-center py-3">
+                    <div class="text-muted">...</div>
+                    <small class="text-muted">
+                        Показаны первые и последние 25 из {{ total_available }} номеров
+                    </small>
+                </div>
+                {% endif %}
+
+                <!-- Последние 25 номеров -->
+                {% for number in last_25 %}
                 <div class="col">
                     <a target="_blank"
                         class="card-number d-block text-decoration-none p-3 text-center rounded border hover-shadow"
@@ -54,12 +71,6 @@
                 <i class="bi bi-exclamation-triangle me-2"></i>Нет доступных номеров карточек
             </div>
             {% endif %}
-        </div>
-
-        <div class="card-footer bg-light">
-            <small class="text-muted">
-                Нажмите на номер, чтобы создать карточку животного с этим номером (откроется в новой вкладке)
-            </small>
         </div>
     </div>
 </div>
