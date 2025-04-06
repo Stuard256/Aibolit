@@ -55,7 +55,7 @@
                     <div class="card-body">
                         <!-- Информация о владельце -->
                         <div class="mb-3">
-                            <label class="form-label">Владелец*</label>
+                            <label class="form-label">Владелец</label>
                             <div class="p-3 bg-light rounded">
                                 <p class="mb-1"><strong>ФИО:</strong>
                                     <a href="{{ url_for('owner_card', owner_id=owner.id) }}"
@@ -65,11 +65,17 @@
                                 </p>
                                 <p class="mb-0"><strong>Телефон:</strong> {{ owner.phone }}</p>
                             </div>
+                            <div class="col-12">
+                                <div class="d-flex align-items-center bg-white p-2 rounded">
+                                    <span class="text-muted small p-2">Номер карточки: </span>
+                                    <span class="fs-3 fw-bold text-primary">{{ pet.card_number }}</span>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- Информация о животном -->
                         <div class="mb-3">
-                            <label class="form-label">Животное*</label>
+                            <label class="form-label">Животное</label>
                             <div id="pet-info" class="p-3 bg-light rounded">
                                 <div class="row">
                                     <div class="col-6">
