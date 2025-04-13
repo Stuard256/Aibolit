@@ -141,8 +141,8 @@
                 <select name="gender" class="form-select" required>
                   <option value="М">Мужской</option>
                   <option value="Ж">Женский</option>
-                  <option value="кастрат М">Кастрат мужской</option>
-                  <option value="кастрат Ж">Кастрат женский</option>
+                  <option value="КМ">Кастрат мужской</option>
+                  <option value="КЖ">Кастрат женский</option>
                 </select>
               </div>
 
@@ -153,12 +153,16 @@
 
               <div class="col-12">
                 <div class="row g-3">
-                  <div class="col-md-6">
+                  <div class="col-md-4">
+                    <label class="form-label">Окрас</label>
+                    <input type="text" class="form-control" name="coloration" required>
+                  </div>
+                  <div class="col-md-4">
                     <label class="form-label">Дата рождения</label>
                     <input type="date" class="form-control" name="birth_date" required>
                   </div>
 
-                  <div class="col-md-6">
+                  <div class="col-md-4">
                     <label class="form-label">Возраст</label>
                     <input type="text" class="form-control" value="Рассчитывается автоматически" disabled>
                   </div>
@@ -262,8 +266,8 @@
                 <select name="gender" class="form-select" required>
                   <option value="М" {% if pet.gender=="М" %}selected{% endif %}>Мужской</option>
                   <option value="Ж" {% if pet.gender=="Ж" %}selected{% endif %}>Женский</option>
-                  <option value="кастрат М" {% if pet.gender=="КМ" %}selected{% endif %}>Кастрат мужской</option>
-                  <option value="кастрат Ж" {% if pet.gender=="КЖ" %}selected{% endif %}>Кастрат женский</option>
+                  <option value="КМ" {% if pet.gender=="КМ" %}selected{% endif %}>Кастрат мужской</option>
+                  <option value="КЖ" {% if pet.gender=="КЖ" %}selected{% endif %}>Кастрат женский</option>
                 </select>
               </div>
 
@@ -274,13 +278,17 @@
 
               <div class="col-12">
                 <div class="row g-3">
-                  <div class="col-md-6">
+                  <div class="col-md-4">
+                    <label class="form-label">Окрас</label>
+                    <input type="text" class="form-control" name="coloration" value="{{ pet.coloration }}" required>
+                  </div>
+                  <div class="col-md-4">
                     <label class="form-label">Дата рождения</label>
                     <input type="date" class="form-control" name="birth_date"
                       value="{{ pet.birth_date.strftime('%Y-%m-%d') }}" required>
                   </div>
 
-                  <div class="col-md-6">
+                  <div class="col-md-4">
                     <label class="form-label">Возраст</label>
                     <input type="text" class="form-control" value="{{ pet.pet_formatted_age() }}" disabled>
                   </div>
