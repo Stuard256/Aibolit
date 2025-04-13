@@ -52,35 +52,51 @@
                         <h5 class="mb-0">Клиент и питомец</h5>
                     </div>
                     <div class="card-body">
-                        <!-- Выбор владельца -->
+                        {% if request.args.get('owner_id') and request.args.get('pet_id') %}
+                        <!-- Режим предвыбранных владельца и животного -->
+                        <div class="mb-3">
+                            <label class="form-label">Владелец</label>
+                            <div class="p-3 bg-light rounded">
+                                <p class="mb-0 fw-bold">{{ selected_owner.name }}</p>
+                                <input type="hidden" name="owner_id" value="{{ selected_owner.id }}">
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Животное</label>
+                            <div class="p-3 bg-light rounded">
+                                <p class="mb-0 fw-bold">{{ selected_pet.name }} ({{ selected_pet.card_number }})</p>
+                                <input type="hidden" name="pet_id" value="{{ selected_pet.id }}">
+                            </div>
+                        </div>
+                        {% else %}
+                        <!-- Стандартные поля выбора -->
                         <div class="mb-3">
                             <label for="owner_search" class="form-label">Владелец*</label>
                             <select class="form-select" id="owner_search" name="owner_id" required
                                 data-ajax-url="{{ url_for('search_owners') }}">
-                                {% if appointment %}
-                                <option value="{{ appointment.owner.id }}" selected>
-                                    {{ appointment.owner.name }}
+                                {% if selected_owner %}
+                                <option value="{{ selected_owner.id }}" selected>
+                                    {{ selected_owner.name }}
                                 </option>
                                 {% endif %}
                             </select>
                         </div>
 
-                        <!-- Выбор животного -->
                         <div class="mb-3">
                             <label for="pet_search" class="form-label">Животное*</label>
                             <select class="form-select" id="pet_search" name="pet_id" required
                                 data-ajax-url="/api/pets_by_owner">
-                                {% if appointment %}
-                                <option value="{{ appointment.pet.id }}" selected>
-                                    {{ appointment.pet.name }} ({{ appointment.pet.card_number }})
+                                {% if selected_pet %}
+                                <option value="{{ selected_pet.id }}" selected>
+                                    {{ selected_pet.name }} ({{ selected_pet.card_number }})
                                 </option>
                                 {% endif %}
                             </select>
                         </div>
-
-                        <!-- Информация о выбранном животном -->
+                        {% endif %}
                         <div id="pet-info" class="p-3 bg-light rounded"
-                            style="display: {% if appointment %}block{% else %}none{% endif %};">
+                            style="display: {% if selected_pet %}block{% else %}none{% endif %};">
                             {% if appointment %}
                             <div class="row">
                                 <div class="col-6">
@@ -212,77 +228,83 @@
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
     $(document).ready(function () {
-        // Инициализация поиска владельцев
-        $('#owner_search').select2({
-            ajax: {
-                url: $('#owner_search').data('ajax-url'),
-                dataType: 'json',
-                delay: 250,
-                data: function (params) {
-                    return {
-                        term: params.term
-                    };
-                },
-                processResults: function (data) {
-                    return {
-                        results: data
-                    };
-                },
-                cache: true
-            },
-            minimumInputLength: 2,
-            placeholder: 'Начните вводить ФИО владельца',
-            language: 'ru'
-        });
 
-        // Инициализация выбора животных
-        $('#pet_search').select2({
-            ajax: {
-                url: $('#pet_search').data('ajax-url'),
-                dataType: 'json',
-                delay: 250,
-                data: function () {
-                    return {
-                        owner_id: $('#owner_search').val()
-                    };
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.has('owner_id') && urlParams.has('pet_id')) {
+            $('#owner_search').prop('disabled', true);
+            $('#pet_search').prop('disabled', true);
+            $('#pet-info').show();
+        } else {
+            $('#owner_search').select2({
+                ajax: {
+                    url: $('#owner_search').data('ajax-url'),
+                    dataType: 'json',
+                    delay: 250,
+                    data: function (params) {
+                        return {
+                            term: params.term
+                        };
+                    },
+                    processResults: function (data) {
+                        return {
+                            results: data
+                        };
+                    },
+                    cache: true
                 },
-                processResults: function (data) {
-                    return {
-                        results: data
-                    };
+                minimumInputLength: 2,
+                placeholder: 'Начните вводить ФИО владельца',
+                language: 'ru'
+            });
+
+            // Инициализация выбора животных
+            $('#pet_search').select2({
+                ajax: {
+                    url: $('#pet_search').data('ajax-url'),
+                    dataType: 'json',
+                    delay: 250,
+                    data: function () {
+                        return {
+                            owner_id: $('#owner_search').val()
+                        };
+                    },
+                    processResults: function (data) {
+                        return {
+                            results: data
+                        };
+                    }
+                },
+                placeholder: 'Выберите животное',
+                language: 'ru',
+                disabled: !$('#owner_search').val()
+            });
+
+            // При изменении выбора владельца
+            $('#owner_search').on('change', function () {
+                const ownerId = $(this).val();
+                const petSelect = $('#pet_search');
+
+                if (ownerId) {
+                    petSelect.prop('disabled', false);
+                    petSelect.val(null).trigger('change');
+                    $('#pet-info').hide();
+                } else {
+                    petSelect.prop('disabled', true);
+                    petSelect.val(null);
+                    $('#pet-info').hide();
                 }
-            },
-            placeholder: 'Выберите животное',
-            language: 'ru',
-            disabled: !$('#owner_search').val()
-        });
+            });
 
-        // При изменении выбора владельца
-        $('#owner_search').on('change', function () {
-            const ownerId = $(this).val();
-            const petSelect = $('#pet_search');
+            // При выборе животного
+            $('#pet_search').on('change', function () {
+                if ($(this).val()) {
+                    $('#pet-info').show();
+                } else {
+                    $('#pet-info').hide();
+                }
+            });
+        }
 
-            if (ownerId) {
-                petSelect.prop('disabled', false);
-                petSelect.val(null).trigger('change');
-                $('#pet-info').hide();
-            } else {
-                petSelect.prop('disabled', true);
-                petSelect.val(null);
-                $('#pet-info').hide();
-            }
-        });
-
-        // При выборе животного
-        $('#pet_search').on('change', function () {
-            if ($(this).val()) {
-                $('#pet-info').show();
-            } else {
-                $('#pet-info').hide();
-            }
-        });
-
-        // Обработка изменения типа повторного приёма
         $('#recurring').on('change', function () {
             if (this.value === 'custom_date') {
                 $('#custom_date_field').show();

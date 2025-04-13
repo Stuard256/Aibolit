@@ -46,6 +46,21 @@
                                     {{ form.category.label(class="form-label", for="categorySelect") }}
                                 </div>
                             </div>
+                            <div id="vaccine-types" style="display: none;" class="mb-4">
+                                <label class="form-label">Типы вакцин:</label>
+                                <div class="form-check">
+                                    {{ form.rabies_vaccine(class="form-check-input") }}
+                                    {{ form.rabies_vaccine.label(class="form-check-label") }}
+                                </div>
+                                <div class="form-check">
+                                    {{ form.viral_vaccine(class="form-check-input") }}
+                                    {{ form.viral_vaccine.label(class="form-check-label") }}
+                                </div>
+                                <div class="form-check">
+                                    {{ form.fungal_vaccine(class="form-check-input") }}
+                                    {{ form.fungal_vaccine.label(class="form-check-label") }}
+                                </div>
+                            </div>
 
                             <!-- Дозировка -->
                             <div class="col-md-3">
@@ -130,7 +145,22 @@
 </style>
 
 <script>
-    // Валидация форм
+    function toggleVaccineTypes() {
+        const category = document.getElementById('categorySelect').value;
+        const vaccineTypesDiv = document.getElementById('vaccine-types');
+
+        if (category === 'vaccines') {
+            vaccineTypesDiv.style.display = 'block';
+        } else {
+            vaccineTypesDiv.style.display = 'none';
+        }
+    }
+
+    // Инициализация при загрузке
+    document.addEventListener('DOMContentLoaded', function () {
+        toggleVaccineTypes();
+        document.getElementById('categorySelect').addEventListener('change', toggleVaccineTypes);
+    });
     (function () {
         'use strict'
 

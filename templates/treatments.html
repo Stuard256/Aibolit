@@ -20,7 +20,6 @@
     {% endif %}
     {% endwith %}
 
-    <!-- Category Filter -->
     <div class="card mb-4 shadow-sm">
         <div class="card-header bg-light">
             <h5 class="mb-0"><i class="bi bi-funnel me-2"></i>Фильтр по категориям</h5>
@@ -41,7 +40,6 @@
         </div>
     </div>
 
-    <!-- Treatments Table -->
     <div class="card shadow-sm">
         <div class="card-header bg-light d-flex justify-content-between align-items-center">
             <h5 class="mb-0"><i class="bi bi-list-ul me-2"></i>Список назначений</h5>
@@ -65,6 +63,11 @@
                         <td class="fw-bold">{{ treatment.name }}</td>
                         <td>
                             <span class="badge bg-info text-dark">{{ treatment.category }}</span>
+                            {% if treatment.category == 'vaccines' and treatment.vaccine_types %}
+                            <div class="text-muted small">
+                                Типы: {{ treatment.vaccine_types|join(', ') }}
+                            </div>
+                            {% endif %}
                         </td>
                         <td>
                             <span class="badge bg-light text-dark border">
@@ -96,7 +99,6 @@
                                 </button>
                             </div>
 
-                            <!-- Delete Modal -->
                             <div class="modal fade" id="deleteModal{{ treatment.id }}" tabindex="-1"
                                 aria-labelledby="deleteModalLabel{{ treatment.id }}" aria-hidden="true">
                                 <div class="modal-dialog">
@@ -122,7 +124,8 @@
                                                     class="bi bi-x-circle me-2"></i>Отмена</button>
                                             <form
                                                 action="{{ url_for('delete_treatment_id', treatment_id=treatment.id) }}"
-                                                method="POST">
+                                                enctype="application/x-www-form-urlencoded" method="POST">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                                 <button type="submit" class="btn btn-danger">
                                                     <i class="bi bi-trash me-2"></i>Удалить
                                                 </button>
@@ -166,7 +169,6 @@
 </style>
 
 <script>
-    // Enable tooltips
     document.addEventListener('DOMContentLoaded', function () {
         var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
         var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
