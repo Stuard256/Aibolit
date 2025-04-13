@@ -841,13 +841,28 @@ def delete_note(note_id):
 @app.route('/api/appointments')
 def get_appointments():
     appointments = Appointment.query.all()
-    return jsonify([
-        {'id': a.id,
-         'title': f"{Pet.query.get(a.pet_id).name} ({Owner.query.get(a.owner_id).name})",
-         'start': f"{a.appointment_date}T{a.time}",
-         'end': calculate_end_time(a.appointment_date, a.time, a.duration)}  # Добавляем время окончания
-        for a in appointments
-    ])
+    events = []
+    
+    for a in appointments:
+        pet = Pet.query.get(a.pet_id)
+        owner = Owner.query.get(a.owner_id)
+
+        description = a.description
+        
+        events.append({
+            'id': a.id,
+            'title': "",
+            'start': f"{a.appointment_date}T{a.time}",
+            'end': calculate_end_time(a.appointment_date, a.time, a.duration),
+            'extendedProps': {
+                'card_number': pet.card_number if pet else "N/A",
+                'description': description,
+                'owner_name': owner.name if owner else "Неизвестный владелец",
+                'pet_name': pet.name if pet else "Без имени"
+            }
+        })
+    
+    return jsonify(events)
 
 def calculate_end_time(appointment_date, start_time, duration):
     """Функция для вычисления времени окончания приёма."""
