@@ -1186,6 +1186,7 @@ def add_pet():
             species=request.form['species'],
             gender=request.form['gender'],
             breed=request.form['breed'],
+            coloration= request.form['coloration'],
             birth_date=datetime.strptime(
                 request.form['birth_date'], 
                 '%Y-%m-%d' if '-' in request.form['birth_date'] else '%d-%m-%Y'
