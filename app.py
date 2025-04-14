@@ -15,6 +15,7 @@ from docxtpl import DocxTemplate
 from flask import (Flask, flash, jsonify, make_response, redirect,
                    render_template, request, url_for)
 from flask_wtf.csrf import CSRFProtect
+from sqlalchemy.exc import IntegrityError
 
 # Локальные импорты
 from forms import TreatmentCalculatorForm, TreatmentForm
@@ -1174,35 +1175,47 @@ def delete_owner(owner_id):
 @app.route('/add_pet', methods=['POST'])
 def add_pet():
     try:
-        # Проверка CSRF токена происходит автоматически
         owner_id = request.form['owner_id']
         owner = Owner.query.get_or_404(owner_id)
-        
-        # Создание нового питомца
+        card_number = request.form['card_number'].strip()
+
+        # Предварительная проверка номера карточки
+        existing_pet = Pet.query.filter_by(card_number=card_number).first()
+        if existing_pet:
+            flash(f'Ошибка: Животное с номером карточки {card_number} уже существует!', 'danger')
+            return redirect(url_for('owner_card', owner_id=owner_id))
+
         new_pet = Pet(
             owner_id=owner_id,
             name=request.form['name'],
-            card_number=request.form['card_number'],
+            card_number=card_number,
             species=request.form['species'],
             gender=request.form['gender'],
             breed=request.form['breed'],
-            coloration= request.form['coloration'],
             birth_date=datetime.strptime(
                 request.form['birth_date'], 
                 '%Y-%m-%d' if '-' in request.form['birth_date'] else '%d-%m-%Y'
             ).date(),
             chronic_diseases=request.form.get('chronic_diseases', ''),
-            allergies=request.form.get('allergies', '')
+            allergies=request.form.get('allergies', ''),
+            coloration=request.form.get('coloration', '')
         )
-        
+
         db.session.add(new_pet)
         db.session.commit()
         flash('Животное успешно добавлено!', 'success')
-        
+
+    except IntegrityError as e:
+        db.session.rollback()
+        if 'card_number' in str(e.orig).lower():
+            flash(f'Ошибка: Животное с номером карточки {card_number} уже существует!', 'danger')
+        else:
+            flash('Произошла ошибка при сохранении данных', 'danger')
+
     except Exception as e:
         db.session.rollback()
         flash(f'Ошибка при добавлении животного: {str(e)}', 'danger')
-    
+
     return redirect(url_for('owner_card', owner_id=request.form['owner_id']))
 
 @app.route('/pet/delete/<int:pet_id>', methods=['POST'])
