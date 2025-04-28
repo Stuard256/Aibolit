@@ -16,7 +16,7 @@ from flask import (Flask, flash, jsonify, make_response, redirect,
                    render_template, request, url_for)
 from flask_wtf.csrf import CSRFProtect
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy import func
+from sqlalchemy.orm import selectinload
 
 # Локальные импорты
 from forms import TreatmentCalculatorForm, TreatmentForm
@@ -1175,7 +1175,9 @@ def owners_list():
     search_card = request.args.get('search_card', '').strip().upper()
     search_phone = request.args.get('search_phone', '').strip()
 
-    query = db.session.query(Owner).outerjoin(Pet)
+    #query = db.session.query(Owner).outerjoin(Pet).distinct()
+    query = db.session.query(Owner).options(selectinload(Owner.pets))
+
 
     if search_name:
         # Разбиваем поисковый запрос на части (фамилия, имя)
@@ -1186,9 +1188,9 @@ def owners_list():
         for part in search_parts:
             # Ищем в начале строки (фамилия) или после пробела (имя)
             conditions.append(db.or_(
-                Owner.name.like(f'{part} %'),  # Фамилия в начале
-                Owner.name.like(f'% {part} %'), # Имя в середине
-                Owner.name.like(f'% {part}')    # Имя в конце (если нет отчества)
+                Owner.name.ilike(f'{part} %'),  # Фамилия в начале
+                Owner.name.ilike(f'% {part} %'), # Имя в середине
+                Owner.name.ilike(f'% {part}')    # Имя в конце (если нет отчества)
             ))
         
         # Объединяем условия через AND (и фамилия, и имя должны совпадать)
