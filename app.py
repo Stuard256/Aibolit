@@ -798,45 +798,30 @@ def edit_vaccination(id):
     
     if request.method == 'POST':
         try:
-            # Обновляем основные поля
+            # Обновляем только изменяемые поля
             vaccination.vaccine_name = request.form['vaccine_name']
             vaccination.date_administered = datetime.strptime(request.form['date_administered'], '%Y-%m-%d').date()
             vaccination.vaccination_type = request.form['vaccination_type']
             vaccination.dose_ml = float(request.form['dose_ml']) if request.form['dose_ml'] else None
-            vaccination.previous_vaccination_date = datetime.strptime(request.form['previous_vaccination_date'], '%Y-%m-%d').date() if request.form['previous_vaccination_date'] else None
-            vaccination.next_due_date = datetime.strptime(request.form['next_due_date'], '%Y-%m-%d').date() if request.form['next_due_date'] else None
             
-            # Если изменился владелец или животное
-            if vaccination.owner_id != int(request.form['owner_id']) or vaccination.pet_id != int(request.form['pet_id']):
-                owner = Owner.query.get(request.form['owner_id'])
-                pet = Pet.query.get(request.form['pet_id'])
-                
-                if not owner or not pet:
-                    flash('Владелец или животное не найдены', 'error')
-                    return redirect(request.url)
-                
-                vaccination.owner_id = owner.id
-                vaccination.pet_id = pet.id
-                vaccination.owner_name = owner.name
-                vaccination.owner_address = owner.address
-                vaccination.pet_species = pet.species
-                vaccination.pet_breed = pet.breed
-                vaccination.pet_card_number = pet.card_number
-                
-                # Пересчитываем возраст
-                today = date.today()
-                vaccination.pet_age = today.year - pet.birth_date.year - ((today.month, today.day) < (pet.birth_date.month, pet.birth_date.day))
+            # Обрабатываем необязательные даты
+            vaccination.previous_vaccination_date = datetime.strptime(request.form['previous_vaccination_date'], '%Y-%m-%d').date() if request.form.get('previous_vaccination_date') else None
+            vaccination.next_due_date = datetime.strptime(request.form['next_due_date'], '%Y-%m-%d').date() if request.form.get('next_due_date') else None
             
             db.session.commit()
             flash('Вакцинация успешно обновлена!', 'success')
             return redirect(url_for('vaccinations'))
             
+        except ValueError as e:
+            db.session.rollback()
+            flash(f'Ошибка формата даты или числа: {str(e)}', 'danger')
+            return redirect(request.url)
         except Exception as e:
             db.session.rollback()
             flash(f'Ошибка при обновлении вакцинации: {str(e)}', 'danger')
             return redirect(request.url)
     
-    return render_template('vaccination_form.html', vaccination=vaccination)
+    return render_template('vaccination_form.html', vaccination=vaccination, is_edit=True)
 
 @app.route('/vaccination/delete/<int:id>', methods=['POST'])
 def delete_vaccination(id):
