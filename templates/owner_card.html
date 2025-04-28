@@ -315,6 +315,10 @@
                     <i class="bi bi-save"></i> Сохранить
                   </button>
           </form>
+          <button type="button" class="btn btn-outline-info" data-bs-toggle="modal" data-bs-target="#changeOwnerModal"
+            onclick="prepareChangeOwnerModal({{ pet.id }})">
+            <i class="bi bi-person-lines-fill"></i> Сменить владельца
+          </button>
           <a href="{{ url_for('print_pet_card', pet_id=pet.id) }}" class="btn btn-outline-secondary" target="_blank">
             <i class="bi bi-printer"></i> Печать
           </a>
@@ -432,6 +436,45 @@
 {% endfor %}
 </div>
 
+<div class="modal fade" id="changeOwnerModal" tabindex="-1" aria-labelledby="changeOwnerModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title" id="changeOwnerModalLabel">Смена владельца животного</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label for="ownerSearchInput" class="form-label">Поиск владельца</label>
+          <input type="text" class="form-control" id="ownerSearchInput" placeholder="Введите ФИО, телефон или адрес">
+          <button class="btn btn-primary mt-2" onclick="searchOwners()">
+            <i class="bi bi-search"></i> Найти
+          </button>
+        </div>
+
+        <div id="ownerSearchResults">
+          <div class="alert alert-info">Введите поисковый запрос для отображения результатов</div>
+        </div>
+
+        <form id="changeOwnerForm" method="POST" action="" style="display: none;">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="pet_id" id="modalPetId">
+          <input type="hidden" name="new_owner_id" id="newOwnerId">
+
+          <div class="alert alert-warning">
+            <strong>Внимание!</strong> Вы действительно хотите сменить владельца этого животного?
+          </div>
+
+          <div class="d-flex justify-content-between mt-3">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+            <button type="submit" class="btn btn-primary">Подтвердить смену владельца</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 
   function togglePetForm() {
@@ -447,5 +490,77 @@
     return confirm('Удалить владельца и всех животных? Это действие необратимо!');
   }
 
+  function prepareChangeOwnerModal(petId) {
+    document.getElementById('modalPetId').value = petId;
+    document.getElementById('changeOwnerForm').style.display = 'none';
+    document.getElementById('ownerSearchResults').innerHTML =
+      '<div class="alert alert-info">Введите поисковый запрос для отображения результатов</div>';
+    document.getElementById('ownerSearchInput').value = '';
+  }
+
+  // Поиск владельцев
+  function searchOwners() {
+    const query = document.getElementById('ownerSearchInput').value.trim();
+    if (!query) {
+      alert('Введите поисковый запрос');
+      return;
+    }
+
+    fetch(`/api/search_owners_for_transfer?q=${encodeURIComponent(query)}`)
+      .then(response => response.json())
+      .then(data => {
+        const resultsContainer = document.getElementById('ownerSearchResults');
+
+        if (data.length === 0) {
+          resultsContainer.innerHTML = '<div class="alert alert-warning">Ничего не найдено</div>';
+          return;
+        }
+
+        let html = '<div class="list-group">';
+        data.forEach(owner => {
+          html += `
+                    <div class="list-group-item owner-option" 
+                         data-owner-id="${owner.id}"
+                         onclick="selectOwner(this, ${owner.id}, '${owner.name}', '${owner.phone}')">
+                        <div class="d-flex justify-content-between">
+                            <strong>${owner.name}</strong>
+                            <span class="text-muted">${owner.phone}</span>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <small class="text-muted">${owner.address}</small>
+                            <small class="text-info">Питомцев: ${owner.pets_count}</small>
+                        </div>
+                    </div>
+                `;
+        });
+        html += '</div>';
+
+        resultsContainer.innerHTML = html;
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        document.getElementById('ownerSearchResults').innerHTML =
+          '<div class="alert alert-danger">Ошибка при поиске владельцев</div>';
+      });
+  }
+
+  // Выбор владельца из результатов поиска
+  function selectOwner(element, ownerId, ownerName, ownerPhone) {
+    // Убираем выделение у всех элементов
+    document.querySelectorAll('.owner-option').forEach(el => {
+      el.classList.remove('selected');
+    });
+
+    // Добавляем выделение выбранному элементу
+    element.classList.add('selected');
+
+    // Заполняем форму
+    document.getElementById('newOwnerId').value = ownerId;
+    document.getElementById('changeOwnerForm').style.display = 'block';
+    document.getElementById('changeOwnerForm').action = `/pets/${document.getElementById('modalPetId').value}/change_owner`;
+
+    // Прокручиваем к форме подтверждения
+    document.getElementById('changeOwnerForm').scrollIntoView({ behavior: 'smooth' });
+  }
 </script>
 {% endblock %}

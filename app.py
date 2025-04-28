@@ -1121,6 +1121,47 @@ def owner_card(owner_id):
     
     return render_template('owner_card.html', owner=owner)
 
+@app.route('/api/search_owners_for_transfer')
+def search_owners_for_transfer():
+    query = request.args.get('q', '').strip()
+    if not query:
+        return jsonify([])
+    
+    # Ищем по имени, телефону или адресу с более подробной информацией
+    owners = Owner.query.filter(
+        db.or_(
+            Owner.name.ilike(f'%{query}%'),
+            Owner.phone.ilike(f'%{query}%'),
+            Owner.address.ilike(f'%{query}%')
+        )
+    ).limit(20).all()
+    
+    return jsonify([{
+        'id': owner.id,
+        'name': owner.name,
+        'phone': owner.phone,
+        'address': owner.address,
+        'pets_count': len(owner.pets)
+    } for owner in owners])
+
+@app.route('/pets/<int:pet_id>/change_owner', methods=['POST'])
+def change_pet_owner(pet_id):
+    pet = Pet.query.get_or_404(pet_id)
+    new_owner_id = request.form.get('new_owner_id')
+    
+    if not new_owner_id:
+        flash('Не выбран новый владелец', 'danger')
+        return redirect(url_for('pet_card', pet_id=pet_id))
+    
+    new_owner = Owner.query.get_or_404(new_owner_id)
+    
+    # Меняем владельца
+    pet.owner_id = new_owner.id
+    db.session.commit()
+    
+    flash(f'Животное успешно переведено на владельца: {new_owner.name}', 'success')
+    return redirect(url_for('owner_card', owner_id=new_owner.id))
+
 @app.route('/owners')
 def owners_list():
     page = request.args.get('page', 1, type=int)
