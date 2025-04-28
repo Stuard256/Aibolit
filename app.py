@@ -1126,15 +1126,30 @@ def owners_list():
     page = request.args.get('page', 1, type=int)
     per_page = 10
 
-    search_name = request.args.get('search_name', '').strip().upper()  # Приводим к верхнему регистру
-    search_pet = request.args.get('search_pet', '').strip().upper()    # Приводим к верхнему регистру
-    search_card = request.args.get('search_card', '').strip().upper()  # Приводим к верхнему регистру
+    search_name = request.args.get('search_name', '').strip().upper()
+    search_pet = request.args.get('search_pet', '').strip().upper()
+    search_card = request.args.get('search_card', '').strip().upper()
     search_phone = request.args.get('search_phone', '').strip()
 
     query = db.session.query(Owner).outerjoin(Pet)
 
     if search_name:
-        query = query.filter(Owner.name.contains(search_name)) 
+        # Разбиваем поисковый запрос на части (фамилия, имя)
+        search_parts = search_name.split()[:2]  # Берем только первые два слова
+        
+        # Создаем условия для поиска по фамилии и имени (без отчества)
+        conditions = []
+        for part in search_parts:
+            # Ищем в начале строки (фамилия) или после пробела (имя)
+            conditions.append(db.or_(
+                Owner.name.like(f'{part} %'),  # Фамилия в начале
+                Owner.name.like(f'% {part} %'), # Имя в середине
+                Owner.name.like(f'% {part}')    # Имя в конце (если нет отчества)
+            ))
+        
+        # Объединяем условия через AND (и фамилия, и имя должны совпадать)
+        query = query.filter(db.and_(*conditions))
+    
     if search_pet:
         query = query.filter(Pet.name.contains(search_pet))
     if search_card:
