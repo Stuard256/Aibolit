@@ -125,7 +125,7 @@ def import_vaccinations(filename):
         reader = csv.DictReader(f, delimiter=',')
         
         for row in reader:
-            actual_card_num = row['actual_card_num']  # Используем actual_card_num вместо card_id
+            actual_card_num = row['actual_card_num']
             vac_type = row['vac_type']
             vac_date = row['vac_date']
             name = row['name'].strip().upper()
@@ -146,7 +146,7 @@ def import_vaccinations(filename):
             
             # Добавляем во временное хранилище
             temp_data[(actual_card_num, parsed_date)].append({
-                'actual_card_num': actual_card_num,  # Используем actual_card_num
+                'actual_card_num': actual_card_num,
                 'vac_date': parsed_date,
                 'type': vac_type,
                 'name': name,
@@ -181,12 +181,60 @@ def import_vaccinations(filename):
         # Добавляем уникальные вакцины в обработанные данные
         processed_data.extend(unique_vaccines.values())
     
-    # Импортируем в базу данных
+    # Удаляем существующие дубли перед импортом
+    print("Поиск и удаление дубликатов вакцинаций...")
+    duplicates_found = 0
+    
+    # Сначала проверяем и удаляем дубли в базе данных
+    all_vaccinations = Vaccination.query.all()
+    vaccination_keys = set()
+    
+    for vac in all_vaccinations:
+        key = (
+            vac.vaccine_name,
+            vac.date_administered,
+            vac.vaccination_type,
+            vac.pet_id,
+            vac.dose_ml
+        )
+        
+        if key in vaccination_keys:
+            # Нашли дубликат - удаляем
+            db.session.delete(vac)
+            duplicates_found += 1
+        else:
+            vaccination_keys.add(key)
+    
+    if duplicates_found > 0:
+        try:
+            db.session.commit()
+            print(f"Удалено {duplicates_found} дубликатов вакцинаций")
+        except Exception as e:
+            db.session.rollback()
+            print(f"Ошибка при удалении дубликатов: {e}")
+    
+    # Импортируем в базу данных, проверяя существующие записи
+    imported_count = 0
+    skipped_count = 0
+    
     for vaccine in processed_data:
-        # Находим животное по номеру карточки (actual_card_num соответствует card_number в Pet)
+        # Находим животное по номеру карточки
         pet = Pet.query.filter_by(card_number=vaccine['actual_card_num']).first()
         if not pet:
             print(f"Животное с картой {vaccine['actual_card_num']} не найдено")
+            skipped_count += 1
+            continue
+        
+        # Проверяем, существует ли уже такая вакцинация
+        existing = Vaccination.query.filter_by(
+            vaccine_name=vaccine['comment'],
+            date_administered=vaccine['vac_date'],
+            vaccination_type=vaccine['type_name'],
+            pet_id=pet.id
+        ).first()
+        
+        if existing:
+            skipped_count += 1
             continue
         
         # Создаем запись о вакцинации
@@ -200,16 +248,16 @@ def import_vaccinations(filename):
                 dose_ml=1,  # Можно добавить логику для дозы, если есть данные
                 previous_vaccination_date=None,
                 next_due_date=None,
-                # Заполняем дополнительные поля
                 owner_name=pet.owner.name,
                 owner_address=pet.owner.address,
                 pet_species=pet.species,
                 pet_breed=pet.breed,
                 pet_card_number=pet.card_number,
-                pet_age=pet.pet_age()  # Используем метод pet_age() из модели Pet
+                pet_age=pet.pet_age()
             )
             
             db.session.add(vaccination)
+            imported_count += 1
         except Exception as e:
             db.session.rollback()
             print(f"Ошибка при создании вакцинации: {e}")
@@ -217,7 +265,7 @@ def import_vaccinations(filename):
     
     try:
         db.session.commit()
-        print(f"Успешно импортировано {len(processed_data)} вакцинаций")
+        print(f"Импорт завершен. Добавлено: {imported_count}, пропущено (уже существует): {skipped_count}")
     except IntegrityError as e:
         db.session.rollback()
         print(f"Ошибка при сохранении вакцинаций: {e}")
