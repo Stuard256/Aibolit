@@ -1369,8 +1369,20 @@ def import_csv_command():
         import traceback
         traceback.print_exc()
 
+@app.cli.command("import-owner-csv")
+def import_owner_csv_command():
+    """Импорт данных из CSV файла"""
+    try:
+        from csv_importer import import_owners_from_csv  # Вынесем импортер в отдельный файл
+        import_owners_from_csv('owners_test.csv')
+        print("Импорт успешно завершен!")
+    except Exception as e:
+        print(f"Ошибка импорта: {str(e)}")
+        import traceback
+        traceback.print_exc()
+
 @app.cli.command("import-vac-csv")
-def import_csv_command():
+def import_vac_csv_command():
     """Импорт данных о вакцинах из CSV файла"""
     try:
         from csv_importer import import_vaccinations  # Вынесем импортер в отдельный файл

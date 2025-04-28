@@ -269,3 +269,69 @@ def import_vaccinations(filename):
     except IntegrityError as e:
         db.session.rollback()
         print(f"Ошибка при сохранении вакцинаций: {e}")
+
+def import_owners_from_csv(filename):
+    """
+    Импорт владельцев из CSV файла с проверкой на дубликаты по ФИО в ВЕРХНЕМ РЕГИСТРЕ.
+    Сохраняет только первый адрес и первый телефон для каждого владельца.
+    Формат CSV: owner_name, value, type (9975 - адрес, 9981 - телефон)
+    """
+    # Словарь для временного хранения данных владельцев
+    owners_data = defaultdict(lambda: {'phones': [], 'addresses': []})
+    
+    with open(filename, 'r', encoding='utf-8') as f:
+        reader = csv.DictReader(f)
+        
+        for row in reader:
+            # Приводим ФИО к верхнему регистру и удаляем лишние пробелы
+            owner_name = ' '.join(word.upper() for word in row['owner_name'].strip().split())
+            value = row['value'].strip()
+            record_type = row['type']
+            
+            # Добавляем данные, только если соответствующего типа еще нет
+            if record_type == '9975' and not owners_data[owner_name]['addresses']:  # Только первый адрес
+                owners_data[owner_name]['addresses'].append(value)
+            elif record_type == '9981' and not owners_data[owner_name]['phones']:  # Только первый телефон
+                owners_data[owner_name]['phones'].append(value)
+    
+    # Импортируем в базу данных
+    imported_count = 0
+    skipped_count = 0
+    
+    for owner_name_upper, data in owners_data.items():
+        # Проверяем, существует ли уже владелец с таким ФИО (в верхнем регистре)
+        existing_owner = Owner.query.filter(
+            db.func.upper(Owner.name) == owner_name_upper
+        ).first()
+        
+        if existing_owner:
+            skipped_count += 1
+            continue
+        
+        # Создаем нового владельца
+        try:
+            # Берем первый адрес и первый телефон (или значения по умолчанию)
+            address = data['addresses'][0] if data['addresses'] else 'НЕ УКАЗАН'
+            phone = data['phones'][0] if data['phones'] else 'НЕ УКАЗАН'
+            
+            owner = Owner(
+                name=owner_name_upper,  # Сохраняем в верхнем регистре
+                address=address,
+                phone=phone
+            )
+            
+            db.session.add(owner)
+            imported_count += 1
+        except Exception as e:
+            db.session.rollback()
+            print(f"ОШИБКА ПРИ СОЗДАНИИ ВЛАДЕЛЬЦА {owner_name_upper}: {e}")
+            continue
+    
+    try:
+        db.session.commit()
+        print(f"ИМПОРТ ЗАВЕРШЕН. ДОБАВЛЕНО: {imported_count}, ПРОПУЩЕНО (УЖЕ СУЩЕСТВУЕТ): {skipped_count}")
+        return True
+    except IntegrityError as e:
+        db.session.rollback()
+        print(f"ОШИБКА ПРИ СОХРАНЕНИИ ВЛАДЕЛЬЦЕВ: {e}")
+        return False
