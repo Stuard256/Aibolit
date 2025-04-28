@@ -1165,6 +1165,59 @@ def change_pet_owner(pet_id):
     flash(f'Животное успешно переведено на владельца: {new_owner.name}', 'success')
     return redirect(url_for('owner_card', owner_id=new_owner.id))
 
+@app.route('/problematic_owners')
+def problematic_owners():
+    page = request.args.get('page', 1, type=int)
+    per_page = 10
+
+    # Основной запрос
+    query = db.session.query(Owner).options(selectinload(Owner.pets))
+
+    # 1. Ищем дубли по имени владельца
+    duplicate_names = db.session.query(Owner.name)\
+        .group_by(Owner.name)\
+        .having(db.func.count(Owner.id) > 1)\
+        .all()
+    duplicate_names = {name for (name,) in duplicate_names}
+
+    # 2. Ищем владельцев с очень старыми животными (старше 20 лет)
+    today = datetime.today().date()
+    twenty_years_ago = today.replace(year=today.year - 20)
+
+    old_pet_owner_ids = db.session.query(Pet.owner_id)\
+        .filter(Pet.birth_date <= twenty_years_ago)\
+        .distinct()\
+        .all()
+    old_pet_owner_ids = {owner_id for (owner_id,) in old_pet_owner_ids}
+
+    # 3. Фильтруем владельцев
+    query = query.filter(
+        db.or_(
+            Owner.name.in_(duplicate_names),
+            Owner.id.in_(old_pet_owner_ids)
+        )
+    )
+
+    owners_pagination = query.order_by(Owner.name)\
+                           .paginate(page=page, per_page=per_page, error_out=False)
+
+    # Передадим в шаблон информацию о дублях и старых животных
+    problematic_owner_ids = {
+        'duplicate_names': duplicate_names,
+        'old_pet_owner_ids': old_pet_owner_ids
+    }
+
+    return render_template(
+        'owners.html',
+        owners=owners_pagination.items,
+        pagination=owners_pagination,
+        search_name='',
+        search_pet='',
+        search_card='',
+        search_phone='',
+        problematic_owner_ids=problematic_owner_ids
+    )
+
 @app.route('/owners')
 def owners_list():
     page = request.args.get('page', 1, type=int)
@@ -1214,7 +1267,8 @@ def owners_list():
         search_name=search_name,
         search_pet=search_pet,
         search_card=search_card,
-        search_phone=search_phone
+        search_phone=search_phone,
+        problematic_owner_ids=None
     )
 
 @app.route('/owner/delete/<int:owner_id>', methods=['POST'])

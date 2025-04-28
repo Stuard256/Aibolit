@@ -5,9 +5,14 @@
 <div class="container-fluid">
   <div class="d-flex justify-content-between align-items-center mb-4">
     <h2 class="mb-0">Владельцы животных</h2>
-    <a class="btn btn-success" href="{{ url_for('add_owner') }}">
-      <i class="bi bi-plus-lg"></i> Добавить владельца
-    </a>
+    <div class="d-flex gap-2">
+      <a class="btn btn-danger" href="{{ url_for('problematic_owners') }}">
+        <i class="bi bi-exclamation-triangle"></i> Проблемные карточки
+      </a>
+      <a class="btn btn-success" href="{{ url_for('add_owner') }}">
+        <i class="bi bi-plus-lg"></i> Добавить владельца
+      </a>
+    </div>
   </div>
 
   <!-- Поисковая форма -->
@@ -56,13 +61,34 @@
   <div class="row g-4">
     {% for owner in owners %}
     <div class="col-md-6">
-      <div class="card shadow-sm h-100">
+      {% set card_classes = "card shadow-sm h-100" %}
+      {% if problematic_owner_ids %}
+      {% if owner.id in problematic_owner_ids.old_pet_owner_ids %}
+      {% set card_classes = card_classes + " border-danger bg-light-danger" %}
+      {% elif owner.name in problematic_owner_ids.duplicate_names %}
+      {% set card_classes = card_classes + " border-warning bg-light-warning" %}
+      {% endif %}
+      {% endif %}
+      <div class="{{ card_classes }}">
         <div class="card-body">
           <div class="d-flex justify-content-between align-items-start mb-3">
-            <h5 class="card-title mb-0">
+            <h5 class="card-title mb-0 d-flex align-items-center gap-2">
               <a href="{{ url_for('owner_card', owner_id=owner.id) }}" class="text-decoration-none text-dark">
                 {{ owner.name }}
               </a>
+
+              {% if problematic_owner_ids %}
+              {% if owner.name in problematic_owner_ids.duplicate_names %}
+              <span class="badge bg-warning text-dark" title="Дубликат имени владельца">
+                <i class="bi bi-files"></i>
+              </span>
+              {% endif %}
+              {% if owner.id in problematic_owner_ids.old_pet_owner_ids %}
+              <span class="badge bg-danger" title="Есть очень старое животное">
+                <i class="bi bi-hourglass-split"></i>
+              </span>
+              {% endif %}
+              {% endif %}
             </h5>
             <span class="badge bg-primary">
               {{ owner.pets|length }}
@@ -166,6 +192,22 @@
   .rounded-pill {
     background-color: #f8f9fa;
     border: 1px solid #dee2e6;
+  }
+
+  .bg-light-warning {
+    background-color: #fff8e1;
+  }
+
+  .bg-light-danger {
+    background-color: #ffe5e5;
+  }
+
+  .border-warning {
+    border: 1px solid #ffc107 !important;
+  }
+
+  .border-danger {
+    border: 1px solid #dc3545 !important;
   }
 </style>
 

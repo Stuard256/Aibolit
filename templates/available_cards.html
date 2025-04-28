@@ -19,18 +19,18 @@
                 </div>
                 <div class="card-body">
                     <form method="get" class="row g-3">
-                        <div class="col-md-5">
+                        <div class="col-md-4">
                             <label for="min" class="form-label">От номера</label>
                             <input type="number" class="form-control" id="min" name="min"
                                 value="{{ range_min if range_min }}" placeholder="Например: 5000">
                         </div>
-                        <div class="col-md-5">
+                        <div class="col-md-4">
                             <label for="max" class="form-label">До номера</label>
                             <input type="number" class="form-control" id="max" name="max"
                                 value="{{ range_max if range_max }}" placeholder="Например: 6000">
                         </div>
                         <div class="col-md-2 d-flex align-items-end">
-                            <button type="submit" class="btn btn-primary w-100">
+                            <button type="submit" class="btn btn-primary w-200">
                                 <i class="bi bi-filter me-1"></i> Применить
                             </button>
                         </div>
