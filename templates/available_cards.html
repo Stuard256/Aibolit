@@ -11,6 +11,39 @@
                 Диапазон: от <span class="fw-bold">{{ min_number }}</span> до <span class="fw-bold">{{ max_number
                     }}</span>
             </p>
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">
+                        <i class="bi bi-funnel me-2"></i>Фильтр по диапазону
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="get" class="row g-3">
+                        <div class="col-md-5">
+                            <label for="min" class="form-label">От номера</label>
+                            <input type="number" class="form-control" id="min" name="min"
+                                value="{{ range_min if range_min }}" placeholder="Например: 5000">
+                        </div>
+                        <div class="col-md-5">
+                            <label for="max" class="form-label">До номера</label>
+                            <input type="number" class="form-control" id="max" name="max"
+                                value="{{ range_max if range_max }}" placeholder="Например: 6000">
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="bi bi-filter me-1"></i> Применить
+                            </button>
+                        </div>
+                    </form>
+                    {% if range_min or range_max %}
+                    <div class="mt-3">
+                        <a href="{{ url_for('available_card_numbers') }}" class="btn btn-outline-secondary btn-sm">
+                            <i class="bi bi-x-circle me-1"></i> Сбросить фильтр
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
         </div>
 
         <div class="btn-group">

@@ -189,29 +189,44 @@ def delete_treatment(treatment_id, appointment_id):
 
 @app.route('/available_card_numbers')
 def available_card_numbers():
+    # Получаем параметры диапазона из запроса
+    range_min = request.args.get('min', default=None, type=int)
+    range_max = request.args.get('max', default=None, type=int)
+    
     # Получаем все существующие номера карточек
-    used_numbers = [int(p.card_number) for p in Pet.query.with_entities(Pet.card_number).all() if p.card_number.isdigit()]
+    used_numbers = [int(p.card_number) for p in Pet.query.with_entities(Pet.card_number).all() 
+                   if p.card_number and p.card_number.isdigit()]
     
     if not used_numbers:
         # Если нет ни одной карточки, возвращаем сообщение
         return render_template('available_cards.html', 
-                            available_numbers=list(range(1, 100)),
+                            first_25=list(range(1, 26)),
+                            last_25=[],
+                            has_more=False,
+                            total_available=99,
                             min_number=1,
-                            max_number=100)
+                            max_number=100,
+                            range_min=range_min,
+                            range_max=range_max)
     
-    max_number = max(used_numbers)
-    min_number = 1
+    max_used = max(used_numbers)
+    min_used = min(used_numbers)
     
-    # Создаем множество всех возможных номеров
-    all_numbers = set(range(min_number, max_number + 1))
+    # Определяем границы диапазона
+    min_range = range_min if range_min is not None else 1
+    max_range = range_max if range_max is not None else max_used + 100
+    
+    # Создаем множество всех возможных номеров в диапазоне
+    all_numbers = set(range(min_range, max_range + 1))
     used_numbers_set = set(used_numbers)
     
-    # Находим свободные номера
+    # Находим свободные номера в диапазоне
     available_numbers = sorted(all_numbers - used_numbers_set)
     
-    # Добавляем следующий номер после максимального
-    next_number = max_number + 1
-    available_numbers.append(next_number)
+    # Добавляем следующий номер после максимального, если он в диапазоне
+    next_number = max_used + 1
+    if next_number <= max_range:
+        available_numbers.append(next_number)
     
     total_available = len(available_numbers)
     has_more = total_available > 50
@@ -229,8 +244,10 @@ def available_card_numbers():
         last_25=last_25,
         has_more=has_more,
         total_available=total_available,
-        min_number=min_number,
-        max_number=max_number
+        min_number=min_used,
+        max_number=max_used,
+        range_min=range_min,
+        range_max=range_max
     )
 
 @app.route('/edit_treatment/<int:treatment_id>', methods=['GET', 'POST'])
