@@ -833,7 +833,7 @@ def delete_vaccination(id):
     db.session.commit()
 
     flash("Запись о вакцинации успешно удалена!")
-    return render_template('owner_card.html', owner = owner)
+    return redirect(url_for('owner_card', owner_id=owner.id))
 
 @app.route('/delete_note/<int:note_id>')
 def delete_note(note_id):
