@@ -1138,7 +1138,7 @@ def owners_list():
     if search_pet:
         query = query.filter(Pet.name.contains(search_pet))
     if search_card:
-        query = query.filter(Pet.card_number.contains(search_card))
+        query = query.filter(Pet.card_number == search_card)
     if search_phone:
         phone_digits = ''.join(filter(str.isdigit, search_phone))
         query = query.filter(Owner.phone.ilike(f'%{phone_digits}%'))
