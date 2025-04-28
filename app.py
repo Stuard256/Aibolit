@@ -1337,19 +1337,19 @@ def uppercase_all_owner_names():
     """Приводит все имена владельцев (Owner.name) к верхнему регистру."""
     try:
         # Вариант 1: Массовое обновление через один запрос (самый эффективный)
-        updated_count = db.session.query(Owner)\
-            .filter(Owner.name.isnot(None))\
-            .update({"name": db.func.upper(Owner.name)},
-                     synchronize_session=False)
-        db.session.commit()
-        print(f"✅ Успешно обновлено {updated_count} записей.")
+        # updated_count = db.session.query(Owner)\
+        #     .filter(Owner.name.isnot(None))\
+        #     .update({"name": db.func.upper(Owner.name)},
+        #              synchronize_session=False)
+        # db.session.commit()
+        # print(f"✅ Успешно обновлено {updated_count} записей.")
 
         # Вариант 2: Альтернативный способ (если первый не работает)
-        # owners = Owner.query.filter(Owner.name.isnot(None)).all()
-        # for owner in owners:
-        #     owner.name = owner.name.upper()
-        # db.session.commit()
-        # print(f"✅ Успешно обновлено {len(owners)} записей.")
+        owners = Owner.query.filter(Owner.name.isnot(None)).all()
+        for owner in owners:
+            owner.name = owner.name.upper()
+        db.session.commit()
+        print(f"Успешно обновлено {len(owners)} записей.")
 
     except Exception as e:
         db.session.rollback()
