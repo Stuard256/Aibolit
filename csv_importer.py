@@ -107,6 +107,78 @@ def import_csv(filename):
         db.session.rollback()
         print(f"Ошибка животных: {e}")
 
+def import_only_new_pets(filename):
+    # Маппинги для преобразования значений
+    species_mapping = {'1': 'Собака', '2': 'Кот', '3': 'Птица', '4': 'Грызун', '5': 'Лиса'}
+    sex_mapping = {'1': 'М', '2': 'Ж', '3': 'КМ', '4': 'КЖ'}
+
+    # Находим владельца Муху Андрея Леонидовича
+    owner_name = "МУХА АНДРЕЙ ЛЕОНИДОВИЧ"
+    owner = Owner.query.filter_by(name=owner_name).first()
+    
+    if not owner:
+        print(f"Владелец {owner_name} не найден в базе данных!")
+        return
+
+    new_pets_count = 0
+    
+    with open(filename, 'r', encoding='utf-8') as f:
+        reader = csv.DictReader(f, delimiter=',')
+        
+        for row in reader:
+            card_num = row['actual_card_num']
+            
+            # Проверяем, существует ли уже животное с таким номером карточки
+            if Pet.query.filter_by(card_number=card_num).first():
+                continue  # Пропускаем существующих животных
+                
+            # Обработка даты рождения
+            birth_date = None
+            try:
+                birth_date_str = row['birth_date']
+                for fmt in ('%Y%m%d', '%d%m%Y', '%Y-%m-%d', '%d-%m-%Y'):
+                    try:
+                        birth_date = datetime.strptime(birth_date_str, fmt).date()
+                        break
+                    except ValueError:
+                        continue
+            except (ValueError, KeyError) as e:
+                print(f"Ошибка в дате для карточки {card_num}: {e}")
+                continue
+
+            if not birth_date:
+                print(f"Неверный формат даты для карточки {card_num}: {row['birth_date']}")
+                continue
+
+            # Обработка полей животного
+            pet_name = ' '.join(word.capitalize() for word in row['name'].lower().split())
+            breed = row['breed_name'].strip().lower()
+            color = row['color'].strip().lower()
+
+            # Создаем новое животное
+            pet = Pet(
+                owner_id=owner.id,
+                name=pet_name,
+                card_number=card_num,
+                species=species_mapping.get(row['species'], 'Неизвестно'),
+                gender=sex_mapping.get(row['sex'], 'Неизвестно'),
+                breed=breed,
+                coloration=color,
+                birth_date=birth_date,
+                chronic_diseases='',
+                allergies=''
+            )
+            
+            db.session.add(pet)
+            new_pets_count += 1
+
+    try:
+        db.session.commit()
+        print(f"Успешно добавлено {new_pets_count} новых животных для владельца {owner_name}")
+    except Exception as e:
+        db.session.rollback()
+        print(f"Ошибка при добавлении животных: {e}")
+
 def import_vaccinations(filename):
     # Словарь для временного хранения и обработки данных
     temp_data = defaultdict(list)

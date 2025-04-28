@@ -81,7 +81,7 @@
           <div class="border-top pt-3">
             <h6 class="text-muted mb-3">Животные:</h6>
             <div class="d-flex flex-wrap gap-2">
-              {% for pet in owner.pets %}
+              {% for pet in owner.pets[:3] %}
               <div class="bg-light rounded-pill px-3 py-1">
                 {{ pet.name }} ({{ pet.card_number }})
               </div>

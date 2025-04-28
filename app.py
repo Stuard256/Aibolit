@@ -1098,7 +1098,10 @@ def add_owner():
 
 @app.route('/owner/<int:owner_id>', methods=['GET', 'POST'])
 def owner_card(owner_id):
+    page = request.args.get('page', 1, type=int)
     owner = Owner.query.get_or_404(owner_id)
+    pets = Pet.query.filter_by(owner_id=owner_id).order_by(Pet.name)
+    pagination = pets.paginate(page=page, per_page=10, error_out=False)
     
     if request.method == 'POST':
         try:
@@ -1119,7 +1122,7 @@ def owner_card(owner_id):
             db.session.rollback()
             flash(f'Ошибка при обновлении: {str(e)}', 'danger')
     
-    return render_template('owner_card.html', owner=owner)
+    return render_template('owner_card.html', owner=owner, pagination=pagination)
 
 @app.route('/api/search_owners_for_transfer')
 def search_owners_for_transfer():
@@ -1419,6 +1422,18 @@ def import_csv_command():
     try:
         from csv_importer import import_csv  # Вынесем импортер в отдельный файл
         import_csv('test_.csv')
+        print("Импорт успешно завершен!")
+    except Exception as e:
+        print(f"Ошибка импорта: {str(e)}")
+        import traceback
+        traceback.print_exc()
+
+@app.cli.command("import-new-csv")
+def import_new_csv_command():
+    """Импорт данных из CSV файла"""
+    try:
+        from csv_importer import import_only_new_pets  # Вынесем импортер в отдельный файл
+        import_only_new_pets('animals_temp.csv')
         print("Импорт успешно завершен!")
     except Exception as e:
         print(f"Ошибка импорта: {str(e)}")
