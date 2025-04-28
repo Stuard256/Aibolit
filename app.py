@@ -16,6 +16,7 @@ from flask import (Flask, flash, jsonify, make_response, redirect,
                    render_template, request, url_for)
 from flask_wtf.csrf import CSRFProtect
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy import func
 
 # Локальные импорты
 from forms import TreatmentCalculatorForm, TreatmentForm
@@ -1075,33 +1076,41 @@ def search_owners():
 @app.route('/add_owner', methods=['GET', 'POST'])
 def add_owner():
     if request.method == 'POST':
-        name = request.form['name']
-        address = request.form['address']
-        phone = request.form['phone']
+        name = request.form['name'].strip().upper()  # Приводим к верхнему регистру
+        address = request.form['address'].strip()
+        phone = request.form['phone'].strip()
+        
+        # Проверяем, что имя не пустое
+        if not name:
+            flash("Ошибка: ФИО владельца не может быть пустым!", "error")
+            return redirect(url_for('add_owner'))
+        
         new_owner = Owner(name=name, address=address, phone=phone)
         db.session.add(new_owner)
         db.session.commit()
-        flash("Карточка владельца успешно добавлена!")
+        
+        flash("Карточка владельца успешно добавлена!", "success")
         return redirect(url_for('owner_card', owner_id=new_owner.id))
+    
     return render_template('add_owner.html')
 
-# Карточка владельца с возможностью редактирования
 @app.route('/owner/<int:owner_id>', methods=['GET', 'POST'])
 def owner_card(owner_id):
     owner = Owner.query.get_or_404(owner_id)
     
     if request.method == 'POST':
         try:
-            # Обновляем данные из формы
-            owner.name = request.form['name']
-            owner.address = request.form['address']
-            owner.phone = request.form['phone']
+            owner.name = request.form['name'].strip().upper()
+            owner.address = request.form['address'].strip()
+            owner.phone = request.form['phone'].strip()
             
-            # Сохраняем изменения
+            if not owner.name:
+                flash("Ошибка: ФИО владельца не может быть пустым!", 'danger')
+                return redirect(url_for('owner_card', owner_id=owner.id))
+            
             db.session.commit()
             flash("Данные владельца успешно обновлены!", 'success')
             
-            # Редирект для предотвращения повторной отправки
             return redirect(url_for('owner_card', owner_id=owner.id))
             
         except Exception as e:
@@ -1115,30 +1124,25 @@ def owners_list():
     page = request.args.get('page', 1, type=int)
     per_page = 10
 
-    # Получаем все параметры поиска
-    search_name = request.args.get('search_name', '').strip()
-    search_pet = request.args.get('search_pet', '').strip()
-    search_card = request.args.get('search_card', '').strip()
+    search_name = request.args.get('search_name', '').strip().upper()  # Приводим к верхнему регистру
+    search_pet = request.args.get('search_pet', '').strip().upper()    # Приводим к верхнему регистру
+    search_card = request.args.get('search_card', '').strip().upper()  # Приводим к верхнему регистру
     search_phone = request.args.get('search_phone', '').strip()
 
-    # Базовый запрос
     query = db.session.query(Owner).outerjoin(Pet)
 
-    # Применяем фильтры
     if search_name:
-        query = query.filter(Owner.name.ilike(f'%{search_name}%'))
+        query = query.filter(Owner.name.contains(search_name)) 
     if search_pet:
-        query = query.filter(Pet.name.ilike(f'%{search_pet}%'))
+        query = query.filter(Pet.name.contains(search_pet))
     if search_card:
-        # Точное совпадение номера карточки
-        query = query.filter(Pet.card_number == search_card)
+        query = query.filter(Pet.card_number.contains(search_card))
     if search_phone:
         phone_digits = ''.join(filter(str.isdigit, search_phone))
         query = query.filter(Owner.phone.ilike(f'%{phone_digits}%'))
 
-    # Пагинация
     owners_pagination = query.order_by(Owner.name)\
-                            .paginate(page=page, per_page=per_page, error_out=False)
+                           .paginate(page=page, per_page=per_page, error_out=False)
     
     return render_template(
         'owners.html',
@@ -1328,6 +1332,26 @@ def print_pet_card(pet_id):
 # ================================
 # КОМАНДЫ ДЛЯ РАБОТЫ С БАЗОЙ ДАННЫХ
 # ================================
+@app.cli.command("uppercase")
+def uppercase_all_owner_names():
+    """Приводит все имена владельцев (Owner.name) к верхнему регистру."""
+    try:
+        # Получаем всех владельцев
+        owners = Owner.query.all()
+        
+        # Обновляем каждое имя
+        for owner in owners:
+            if owner.name:  # Проверяем, что имя не None
+                owner.name = owner.name.upper()
+        
+        # Сохраняем изменения в БД
+        db.session.commit()
+        print(f"✅ Успешно обновлено {len(owners)} записей.")
+    
+    except Exception as e:
+        db.session.rollback()
+        print(f"❌ Ошибка: {e}")
+
 @app.cli.command("import-csv")
 def import_csv_command():
     """Импорт данных из CSV файла"""
