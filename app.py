@@ -770,7 +770,7 @@ def new_vaccination():
             db.session.add(vaccination)
             db.session.commit()
             flash('Вакцинация успешно добавлена!', 'success')
-            return render_template('pet_card.html', pet = pet , owner = owner)
+            return redirect(url_for('owner_card', owner_id=vaccination.owner_id))
             
         except Exception as e:
             db.session.rollback()
@@ -780,9 +780,15 @@ def new_vaccination():
         # Обрабатываем GET-параметры
         owner_id = request.args.get('owner_id')
         pet_id = request.args.get('pet_id')
+
+        if not owner_id or not pet_id:
+            flash('Не указаны ID владельца или животного', 'error')
         
         selected_owner = Owner.query.get(owner_id) if owner_id else None
         selected_pet = Pet.query.get(pet_id) if pet_id else None
+
+        if not selected_owner or not selected_pet:
+            flash('Владелец или животное не найдены', 'error')
 
         return render_template(
             'vaccination_form.html',
@@ -810,7 +816,7 @@ def edit_vaccination(id):
             
             db.session.commit()
             flash('Вакцинация успешно обновлена!', 'success')
-            return redirect(url_for('vaccinations'))
+            return redirect(url_for('owner_card', owner_id=vaccination.owner_id))
             
         except ValueError as e:
             db.session.rollback()

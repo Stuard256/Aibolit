@@ -83,3 +83,5 @@ instance/
 instance/vet_clinic.db
 test_.csv
 .gitignore
+animals_temp.csv
+owners_test.csv
