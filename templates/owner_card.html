@@ -75,7 +75,37 @@
     border-radius: 0.5rem;
   }
 </style>
+
 <div class="container-fluid">
+  <!-- Поиск животного по номеру карточки -->
+  <div class="search-card-form">
+    <form method="get" action="{{ url_for('owner_card', owner_id=owner.id) }}" class="row g-3 align-items-center">
+      <input type="hidden" name="page" value="1">
+      <div class="col-md-6">
+        <div class="input-group">
+          <input type="text" class="form-control" name="card_number" placeholder="Поиск животного по номеру карточки"
+            value="{{ search_card_number if search_card_number }}">
+          <button class="btn btn-primary" type="submit">
+            <i class="bi bi-search"></i> Найти
+          </button>
+          {% if search_card_number %}
+          <a href="{{ url_for('owner_card', owner_id=owner.id) }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-counterclockwise"></i>
+          </a>
+          {% endif %}
+        </div>
+      </div>
+      <div class="col-md-6">
+        {% if search_card_number %}
+        {% if pagination.items %}
+        <div class="text-success small">Найдено животное с номером карточки: {{ search_card_number }}</div>
+        {% else %}
+        <div class="text-danger small">Животное с номером карточки {{ search_card_number }} не найдено</div>
+        {% endif %}
+        {% endif %}
+      </div>
+    </form>
+  </div>
   <!-- Блок владельца в горизонтальной раскладке -->
   <div class="card mb-4 shadow-sm">
     <div class="card-header bg-primary text-white">
@@ -549,6 +579,12 @@
 </div>
 
 <script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const highlightedCard = document.querySelector('.search-highlight');
+    if (highlightedCard) {
+      highlightedCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  });
 
   function togglePetForm() {
     const form = document.getElementById('addPetForm');

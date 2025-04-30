@@ -1105,9 +1105,29 @@ def add_owner():
 @app.route('/owner/<int:owner_id>', methods=['GET', 'POST'])
 def owner_card(owner_id):
     page = request.args.get('page', 1, type=int)
+    card_number = request.args.get('card_number', '').strip()
+    highlight_pet = request.args.get('highlight', type=int)
+    
     owner = Owner.query.get_or_404(owner_id)
-    pets = Pet.query.filter_by(owner_id=owner_id).order_by(Pet.name)
-    pagination = pets.paginate(page=page, per_page=10, error_out=False)
+    
+    # Базовый запрос для животных владельца
+    pets_query = Pet.query.filter_by(owner_id=owner_id).order_by(Pet.name)
+    
+    # Если указан номер карточки для поиска
+    if card_number:
+        pet = pets_query.filter_by(card_number=card_number).first()
+        if pet:
+            # Вычисляем на какой странице находится это животное
+            all_pets = pets_query.all()
+            try:
+                index = all_pets.index(pet)
+                page = (index // 10) + 1  # 10 - количество элементов на странице
+                return redirect(url_for('owner_card', owner_id=owner_id, page=page, highlight=pet.id))
+            except ValueError:
+                pass
+    
+    # Пагинация с учетом возможного фильтра
+    pagination = pets_query.paginate(page=page, per_page=10, error_out=False)
     
     if request.method == 'POST':
         try:
@@ -1128,7 +1148,13 @@ def owner_card(owner_id):
             db.session.rollback()
             flash(f'Ошибка при обновлении: {str(e)}', 'danger')
     
-    return render_template('owner_card.html', owner=owner, pagination=pagination)
+    return render_template(
+        'owner_card.html', 
+        owner=owner, 
+        pagination=pagination,
+        highlight_pet=highlight_pet,
+        search_card_number=card_number if card_number else None
+    )
 
 @app.route('/api/search_owners_for_transfer')
 def search_owners_for_transfer():
