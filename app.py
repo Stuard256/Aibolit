@@ -1231,11 +1231,11 @@ def owners_list():
 
     search_name = request.args.get('search_name', '').strip().upper()
     search_pet = request.args.get('search_pet', '').strip().upper()
-    search_card = request.args.get('search_card', '').strip().upper()
+    search_card = request.args.get('search_card', '').strip()
     search_phone = request.args.get('search_phone', '').strip()
 
-    #query = db.session.query(Owner).outerjoin(Pet).distinct()
-    query = db.session.query(Owner).options(selectinload(Owner.pets))
+    query = db.session.query(Owner).outerjoin(Pet).distinct()
+    #query = db.session.query(Owner).options(selectinload(Owner.pets))
 
 
     if search_name:
