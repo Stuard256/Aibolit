@@ -13,7 +13,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from dateutil.relativedelta import relativedelta
 from docxtpl import DocxTemplate
 from flask import (Flask, flash, jsonify, make_response, redirect,
-                   render_template, request, url_for)
+                   render_template, request, url_for, abort)
 from flask_wtf.csrf import CSRFProtect
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
@@ -1025,6 +1025,152 @@ def update_appointment(appointment_id):
     appointment.pet_id = int(data['pet'])
     db.session.commit()
     return jsonify({'success': True})
+
+@app.route('/statistics')
+def statistics():
+    """Страница статистики с графиками по вакцинациям, возрасту и виду животных"""
+    from sqlalchemy import func, extract, case
+    
+    # Статистика по вакцинациям по месяцам за последний год
+    current_date = datetime.now().date()
+    year_ago = current_date.replace(year=current_date.year - 1)
+    
+    vaccination_stats = db.session.query(
+        extract('month', Vaccination.date_administered).label('month'),
+        extract('year', Vaccination.date_administered).label('year'),
+        func.count(Vaccination.id).label('count')
+    ).filter(
+        Vaccination.date_administered >= year_ago
+    ).group_by(
+        extract('month', Vaccination.date_administered),
+        extract('year', Vaccination.date_administered)
+    ).order_by(
+        extract('year', Vaccination.date_administered),
+        extract('month', Vaccination.date_administered)
+    ).all()
+    vaccination_stats = [
+        {
+            'month': int(row.month),
+            'year': int(row.year),
+            'count': int(row.count)
+        } for row in vaccination_stats
+    ]
+    
+    # Статистика по типам вакцинаций
+    vaccination_types = db.session.query(
+        Vaccination.vaccination_type,
+        func.count(Vaccination.id).label('count')
+    ).group_by(Vaccination.vaccination_type).all()
+    vaccination_types = [
+        {
+            'vaccination_type': row.vaccination_type or 'Не указано',
+            'count': int(row.count)
+        } for row in vaccination_types
+    ]
+    
+    # Статистика по видам животных
+    species_stats = db.session.query(
+        Pet.species,
+        func.count(Pet.id).label('count')
+    ).group_by(Pet.species).all()
+    species_stats = [
+        {
+            'species': row.species or 'Не указано',
+            'count': int(row.count)
+        } for row in species_stats
+    ]
+    
+    # Статистика по возрасту животных
+    age_stats = db.session.query(
+        case(
+            (
+                Pet.birth_date >= current_date.replace(year=current_date.year - 1),
+                'до 1 года'
+            ),
+            (
+                Pet.birth_date >= current_date.replace(year=current_date.year - 3),
+                '1-3 года'
+            ),
+            (
+                Pet.birth_date >= current_date.replace(year=current_date.year - 7),
+                '3-7 лет'
+            ),
+            (
+                Pet.birth_date >= current_date.replace(year=current_date.year - 12),
+                '7-12 лет'
+            ),
+            else_='старше 12 лет'
+        ).label('age_group'),
+        func.count(Pet.id).label('count')
+    ).group_by('age_group').all()
+    age_stats = [
+        {
+            'age_group': row.age_group,
+            'count': int(row.count)
+        } for row in age_stats
+    ]
+    
+    # Статистика по приёмам по месяцам за последний год
+    appointment_stats = db.session.query(
+        extract('month', Appointment.appointment_date).label('month'),
+        extract('year', Appointment.appointment_date).label('year'),
+        func.count(Appointment.id).label('count')
+    ).filter(
+        Appointment.appointment_date >= year_ago.strftime('%Y-%m-%d')
+    ).group_by(
+        extract('month', Appointment.appointment_date),
+        extract('year', Appointment.appointment_date)
+    ).order_by(
+        extract('year', Appointment.appointment_date),
+        extract('month', Appointment.appointment_date)
+    ).all()
+    appointment_stats = [
+        {
+            'month': int(row.month),
+            'year': int(row.year),
+            'count': int(row.count)
+        } for row in appointment_stats
+    ]
+    
+    # Статистика по стоимости приёмов
+    appointment_costs = db.session.query(
+        extract('month', Appointment.appointment_date).label('month'),
+        extract('year', Appointment.appointment_date).label('year'),
+        func.sum(AppointmentTreatment.total_price).label('total_cost')
+    ).join(AppointmentTreatment).filter(
+        Appointment.appointment_date >= year_ago.strftime('%Y-%m-%d')
+    ).group_by(
+        extract('month', Appointment.appointment_date),
+        extract('year', Appointment.appointment_date)
+    ).order_by(
+        extract('year', Appointment.appointment_date),
+        extract('month', Appointment.appointment_date)
+    ).all()
+    appointment_costs = [
+        {
+            'month': int(row.month),
+            'year': int(row.year),
+            'total_cost': float(row.total_cost or 0)
+        } for row in appointment_costs
+    ]
+    
+    # Общая статистика
+    total_pets = Pet.query.count()
+    total_owners = Owner.query.count()
+    total_vaccinations = Vaccination.query.count()
+    total_appointments = Appointment.query.count()
+    
+    return render_template('statistics.html',
+                         vaccination_stats=vaccination_stats,
+                         vaccination_types=vaccination_types,
+                         species_stats=species_stats,
+                         age_stats=age_stats,
+                         appointment_stats=appointment_stats,
+                         appointment_costs=appointment_costs,
+                         total_pets=total_pets,
+                         total_owners=total_owners,
+                         total_vaccinations=total_vaccinations,
+                         total_appointments=total_appointments)
 
 
 @app.route('/api/create_appointment', methods=['POST'])
