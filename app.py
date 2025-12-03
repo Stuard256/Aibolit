@@ -1761,6 +1761,42 @@ def statistics():
         for year in years_list
     ]
     
+    # Статистика по вакцинациям по месяцам за последние 5 лет
+    five_years_ago = date(current_year - 4, 1, 1)
+    monthly_vaccinations = db.session.query(
+        extract('year', Vaccination.date_administered).label('year'),
+        extract('month', Vaccination.date_administered).label('month'),
+        func.count(Vaccination.id).label('count')
+    ).filter(
+        Vaccination.date_administered >= five_years_ago
+    ).group_by(
+        extract('year', Vaccination.date_administered),
+        extract('month', Vaccination.date_administered)
+    ).order_by(
+        extract('year', Vaccination.date_administered),
+        extract('month', Vaccination.date_administered)
+    ).all()
+    
+    # Создаем словарь для быстрого доступа
+    monthly_vaccinations_dict = {}
+    for row in monthly_vaccinations:
+        key = "{}-{:02d}".format(int(row.year), int(row.month))
+        monthly_vaccinations_dict[key] = int(row.count)
+    
+    # Создаем полный список всех месяцев за последние 5 лет
+    monthly_vaccinations_full = []
+    for year in years_list:
+        for month in range(1, 13):
+            key = "{}-{:02d}".format(year, month)
+            month_date = date(year, month, 1)
+            if month_date <= current_date:
+                monthly_vaccinations_full.append({
+                    'year': year,
+                    'month': month,
+                    'count': monthly_vaccinations_dict.get(key, 0),
+                    'label': "{:02d}.{}".format(month, year)
+                })
+    
     # Статистика по доходам по годам
     yearly_revenue = db.session.query(
         extract('year', Appointment.appointment_date).label('year'),
@@ -1861,6 +1897,7 @@ def statistics():
                          yearly_pets_stats=yearly_pets_stats,
                          yearly_appointments_stats=yearly_appointments_stats,
                          yearly_vaccinations_stats=yearly_vaccinations_stats,
+                         monthly_vaccinations_full=monthly_vaccinations_full,
                          yearly_revenue_stats=yearly_revenue_stats,
                          yearly_avg_check=yearly_avg_check,
                          yearly_total_pets=yearly_total_pets,

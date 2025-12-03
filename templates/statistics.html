@@ -311,6 +311,12 @@
                 <canvas id="yearlyVaccinationsChart"></canvas>
             </div>
 
+            <!-- График вакцинаций по месяцам за последние 5 лет -->
+            <div class="chart-container" style="margin-bottom: 0;">
+                <div class="chart-title" style="font-size: 1.1rem;">Вакцинации по месяцам (последние 5 лет)</div>
+                <canvas id="monthlyVaccinationsChart"></canvas>
+            </div>
+
             <!-- График доходов по годам -->
             <div class="chart-container" style="margin-bottom: 0;">
                 <div class="chart-title" style="font-size: 1.1rem;">Доходы по годам</div>
@@ -810,6 +816,61 @@
                         stepSize: 1
                     }
                 }
+            }
+        }
+    });
+
+    // График вакцинаций по месяцам за последние 5 лет
+    const monthlyVaccinationsData = {{ monthly_vaccinations_full | tojson }};
+    const monthlyVaccinationsLabels = monthlyVaccinationsData.map(item => item.label);
+    const monthlyVaccinationsCounts = monthlyVaccinationsData.map(item => item.count);
+
+    new Chart(document.getElementById('monthlyVaccinationsChart'), {
+        type: 'line',
+        data: {
+            labels: monthlyVaccinationsLabels,
+            datasets: [{
+                label: 'Количество вакцинаций',
+                data: monthlyVaccinationsCounts,
+                borderColor: 'rgb(75, 192, 192)',
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                tension: 0.4,
+                fill: true,
+                borderWidth: 2,
+                pointRadius: 2,
+                pointHoverRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    mode: 'index',
+                    intersect: false
+                }
+            },
+            scales: {
+                x: {
+                    ticks: {
+                        maxRotation: 45,
+                        minRotation: 45,
+                        maxTicksLimit: 24
+                    }
+                },
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1
+                    }
+                }
+            },
+            interaction: {
+                mode: 'nearest',
+                axis: 'x',
+                intersect: false
             }
         }
     });
