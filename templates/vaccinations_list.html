@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+{% block title %}Просмотр вакцинаций{% endblock %}
+
+{% block content %}
+<div class="container mt-3">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="text-center mb-4">
+                <i class="bi bi-list-ul"></i> Все вакцинации
+            </h1>
+        </div>
+    </div>
+
+    <!-- Поиск -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <form method="GET" class="d-flex">
+                <input type="text" class="form-control me-2" name="search"
+                    placeholder="Поиск по названию вакцины или владельцу..."
+                    value="{{ request.args.get('search', '') }}">
+                <button type="submit" class="btn btn-outline-primary">
+                    <i class="bi bi-search"></i>
+                </button>
+            </form>
+        </div>
+        <div class="col-md-6 text-end">
+            <a href="{{ url_for('vaccinations') }}" class="btn btn-secondary">
+                <i class="bi bi-arrow-left"></i> Назад к отчётам
+            </a>
+        </div>
+    </div>
+
+    <!-- Таблица вакцинаций -->
+    <div class="card shadow-sm">
+        <div class="card-body">
+            {% if vaccinations.items %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Дата</th>
+                            <th>Вакцина</th>
+                            <th>Тип</th>
+                            <th>Владелец</th>
+                            <th>Животное</th>
+                            <th>Порода</th>
+                            <th>Возраст</th>
+                            <th>Доза</th>
+                            <th>Следующая</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for vaccination in vaccinations.items %}
+                        <tr>
+                            <td>{{ vaccination.date_administered.strftime('%d.%m.%Y') }}</td>
+                            <td>{{ vaccination.vaccine_name }}</td>
+                            <td>
+                                <span class="badge bg-primary">{{ vaccination.vaccination_type }}</span>
+                            </td>
+                            <td>{{ vaccination.owner_name }}</td>
+                            <td>{{ vaccination.pet_species }}</td>
+                            <td>{{ vaccination.pet_breed }}</td>
+                            <td>{{ vaccination.pet_age }} лет</td>
+                            <td>{{ vaccination.dose_ml or 'N/A' }} мл</td>
+                            <td>
+                                {% if vaccination.next_due_date %}
+                                {{ vaccination.next_due_date.strftime('%d.%m.%Y') }}
+                                {% else %}
+                                <span class="text-muted">Не указано</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Пагинация -->
+            {% if vaccinations.pages > 1 %}
+            <nav aria-label="Пагинация вакцинаций">
+                <ul class="pagination justify-content-center">
+                    {% if vaccinations.has_prev %}
+                    <li class="page-item">
+                        <a class="page-link"
+                            href="{{ url_for('vaccinations_list', page=vaccinations.prev_num, search=request.args.get('search', '')) }}">
+                            <i class="bi bi-chevron-left"></i>
+                        </a>
+                    </li>
+                    {% endif %}
+
+                    {% for page_num in vaccinations.iter_pages() %}
+                    {% if page_num %}
+                    {% if page_num != vaccinations.page %}
+                    <li class="page-item">
+                        <a class="page-link"
+                            href="{{ url_for('vaccinations_list', page=page_num, search=request.args.get('search', '')) }}">
+                            {{ page_num }}
+                        </a>
+                    </li>
+                    {% else %}
+                    <li class="page-item active">
+                        <span class="page-link">{{ page_num }}</span>
+                    </li>
+                    {% endif %}
+                    {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link">...</span>
+                    </li>
+                    {% endif %}
+                    {% endfor %}
+
+                    {% if vaccinations.has_next %}
+                    <li class="page-item">
+                        <a class="page-link"
+                            href="{{ url_for('vaccinations_list', page=vaccinations.next_num, search=request.args.get('search', '')) }}">
+                            <i class="bi bi-chevron-right"></i>
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+
+            <!-- Статистика -->
+            <div class="row mt-3">
+                <div class="col-md-6">
+                    <small class="text-muted">
+                        Показано {{ vaccinations.items|length }} из {{ vaccinations.total }} записей
+                    </small>
+                </div>
+                <div class="col-md-6 text-end">
+                    <small class="text-muted">
+                        Страница {{ vaccinations.page }} из {{ vaccinations.pages }}
+                    </small>
+                </div>
+            </div>
+
+            {% else %}
+            <div class="text-center py-5">
+                <i class="bi bi-inbox text-muted" style="font-size: 4rem;"></i>
+                <h4 class="text-muted mt-3">Вакцинации не найдены</h4>
+                <p class="text-muted">
+                    {% if request.args.get('search') %}
+                    По вашему запросу "{{ request.args.get('search') }}" ничего не найдено.
+                    {% else %}
+                    В базе данных пока нет записей о вакцинациях.
+                    {% endif %}
+                </p>
+                {% if request.args.get('search') %}
+                <a href="{{ url_for('vaccinations_list') }}" class="btn btn-outline-primary">
+                    <i class="bi bi-arrow-clockwise"></i> Показать все
+                </a>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

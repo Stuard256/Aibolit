@@ -1,0 +1,251 @@
+{% extends "base.html" %}
+
+{% block title %}Настройки - Ветклиника{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h2 class="mb-0">
+                        <i class="bi bi-gear-fill me-2"></i>Настройки
+                    </h2>
+                </div>
+                <div class="card-body">
+                    <!-- Раздел: Тема оформления -->
+                    <div class="mb-4">
+                        <h4 class="border-bottom pb-2">
+                            <i class="bi bi-palette-fill me-2"></i>Внешний вид
+                        </h4>
+                        <div class="mt-3">
+                            <label class="form-label fw-bold">Тема оформления</label>
+                            <div class="d-flex align-items-center">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="themeToggle" style="width: 60px; height: 30px; cursor: pointer;">
+                                    <label class="form-check-label ms-2 fs-5" for="themeToggle" id="themeLabel">
+                                        <i class="bi bi-sun-fill text-warning"></i> Светлая тема
+                                    </label>
+                                </div>
+                            </div>
+                            <small class="text-muted d-block mt-2">
+                                <i class="bi bi-info-circle"></i> Переключайте между светлой и тёмной темой для комфортной работы
+                            </small>
+                        </div>
+                    </div>
+
+                    <!-- Раздел: ML Диагностика -->
+                    <div class="mb-4">
+                        <h4 class="border-bottom pb-2">
+                            <i class="bi bi-cpu-fill me-2"></i>Функции системы
+                        </h4>
+                        <div class="mt-3">
+                            <label class="form-label fw-bold">ML Диагностика заболеваний</label>
+                            <div class="d-flex align-items-center">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="mlToggle" style="width: 60px; height: 30px; cursor: pointer;">
+                                    <label class="form-check-label ms-2 fs-5" for="mlToggle" id="mlLabel">
+                                        <i class="bi bi-x-circle text-danger"></i> ML Диагностика выключена
+                                    </label>
+                                </div>
+                            </div>
+                            <small class="text-muted d-block mt-2">
+                                <i class="bi bi-info-circle"></i> Включите для использования системы автоматической диагностики заболеваний на основе симптомов. 
+                                <strong>По умолчанию выключена</strong> для экономии ресурсов.
+                            </small>
+                            <div class="alert alert-info mt-3 mb-0" id="mlInfo" style="display: none;">
+                                <i class="bi bi-info-circle"></i> 
+                                <strong>Внимание:</strong> После включения ML-диагностики необходимо перезагрузить страницу для загрузки модели.
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Раздел: О программе -->
+                    <div class="mb-4">
+                        <h4 class="border-bottom pb-2">
+                            <i class="bi bi-info-circle-fill me-2"></i>О программе
+                        </h4>
+                        <div class="mt-3">
+                            <p><strong>Название:</strong> Aibolit - Система управления ветеринарной клиникой</p>
+                            <p><strong>Версия:</strong> 1.0.0</p>
+                            <p><strong>Автор:</strong> Stuard256</p>
+                            <p><strong>GitHub:</strong> <a href="https://github.com/Stuard256/Aibolit" target="_blank">github.com/Stuard256/Aibolit</a></p>
+                        </div>
+                    </div>
+
+                    <!-- Раздел: Полезные функции -->
+                    <div class="mb-4">
+                        <h4 class="border-bottom pb-2">
+                            <i class="bi bi-tools me-2"></i>Системные функции
+                        </h4>
+                        <div class="mt-3">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <div class="card bg-light">
+                                        <div class="card-body">
+                                            <h6 class="card-title">
+                                                <i class="bi bi-database-fill-check text-success"></i> Автоматический бэкап
+                                            </h6>
+                                            <p class="card-text small mb-0">
+                                                База данных автоматически сохраняется каждые 15 минут
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <div class="card bg-light">
+                                        <div class="card-body">
+                                            <h6 class="card-title">
+                                                <i class="bi bi-cpu-fill text-primary"></i> ML Диагностика
+                                            </h6>
+                                            <p class="card-text small mb-0">
+                                                Система автоматической диагностики заболеваний на основе симптомов
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Кнопки действий -->
+                    <div class="d-flex justify-content-between mt-4">
+                        <a href="{{ url_for('index') }}" class="btn btn-secondary">
+                            <i class="bi bi-arrow-left"></i> Назад на главную
+                        </a>
+                        <button type="button" class="btn btn-primary" onclick="saveSettings()">
+                            <i class="bi bi-check-lg"></i> Сохранить настройки
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Функция для получения сохранённой темы из localStorage
+function getSavedTheme() {
+    return localStorage.getItem('theme') || 'light';
+}
+
+// Функция для сохранения темы в localStorage
+function saveTheme(theme) {
+    localStorage.setItem('theme', theme);
+}
+
+// Функция для применения темы
+function applyTheme(theme) {
+    const body = document.body;
+    const themeToggle = document.getElementById('themeToggle');
+    const themeLabel = document.getElementById('themeLabel');
+    
+    if (theme === 'dark') {
+        body.classList.add('dark-theme');
+        themeToggle.checked = true;
+        themeLabel.innerHTML = '<i class="bi bi-moon-fill text-info"></i> Тёмная тема';
+    } else {
+        body.classList.remove('dark-theme');
+        themeToggle.checked = false;
+        themeLabel.innerHTML = '<i class="bi bi-sun-fill text-warning"></i> Светлая тема';
+    }
+}
+
+// Функция для переключения темы
+function toggleTheme() {
+    const currentTheme = getSavedTheme();
+    const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+    saveTheme(newTheme);
+    applyTheme(newTheme);
+}
+
+// Функция для получения настройки ML из localStorage
+function getSavedMLEnabled() {
+    const saved = localStorage.getItem('mlEnabled');
+    return saved === 'true'; // По умолчанию false
+}
+
+// Функция для сохранения настройки ML
+function saveMLEnabled(enabled) {
+    localStorage.setItem('mlEnabled', enabled ? 'true' : 'false');
+}
+
+// Функция для применения настройки ML
+function applyMLSetting(enabled) {
+    const mlToggle = document.getElementById('mlToggle');
+    const mlLabel = document.getElementById('mlLabel');
+    const mlInfo = document.getElementById('mlInfo');
+    
+    if (enabled) {
+        mlToggle.checked = true;
+        mlLabel.innerHTML = '<i class="bi bi-check-circle text-success"></i> ML Диагностика включена';
+        mlInfo.style.display = 'block';
+    } else {
+        mlToggle.checked = false;
+        mlLabel.innerHTML = '<i class="bi bi-x-circle text-danger"></i> ML Диагностика выключена';
+        mlInfo.style.display = 'none';
+    }
+}
+
+// Функция для переключения ML
+function toggleML() {
+    const mlToggle = document.getElementById('mlToggle');
+    const enabled = mlToggle.checked;
+    saveMLEnabled(enabled);
+    applyMLSetting(enabled);
+    
+    // Обновляем видимость вкладки диагностики
+    updateDiagnosisTabVisibility();
+    
+    if (enabled) {
+        // Запрашиваем загрузку модели на сервере
+        fetch('/api/enable_ml', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ enabled: true })
+        }).then(response => response.json())
+          .then(data => {
+              if (data.success) {
+                  console.log('ML модель загружена на сервере');
+              }
+          })
+          .catch(error => {
+              console.error('Ошибка при загрузке ML модели:', error);
+          });
+    }
+}
+
+// Функция сохранения настроек
+function saveSettings() {
+    // Показать уведомление об успешном сохранении
+    const mlEnabled = getSavedMLEnabled();
+    if (mlEnabled) {
+        alert('Настройки успешно сохранены! ML-диагностика включена. Рекомендуется перезагрузить страницу.');
+    } else {
+        alert('Настройки успешно сохранены!');
+    }
+}
+
+// Инициализация при загрузке страницы
+document.addEventListener('DOMContentLoaded', function() {
+    // Применяем сохранённую тему
+    const savedTheme = getSavedTheme();
+    applyTheme(savedTheme);
+    
+    // Применяем сохранённую настройку ML
+    const savedML = getSavedMLEnabled();
+    applyMLSetting(savedML);
+    
+    // Обработчик переключения темы
+    const themeToggle = document.getElementById('themeToggle');
+    themeToggle.addEventListener('change', toggleTheme);
+    
+    // Обработчик переключения ML
+    const mlToggle = document.getElementById('mlToggle');
+    mlToggle.addEventListener('change', toggleML);
+});
+</script>
+{% endblock %}
+

@@ -1,0 +1,748 @@
+{% extends "base.html" %}
+
+{% block title %}Диагностика заболеваний{% endblock %}
+
+{% block head %}
+<meta name="csrf-token" content="{{ csrf_token() }}">
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="mb-0">
+                        <i class="bi bi-heart-pulse"></i>
+                        Расширенная диагностика заболеваний животных
+                    </h3>
+                    <small>Система машинного обучения для определения возможных заболеваний по симптомам</small>
+                </div>
+                <div class="card-body">
+                    <form id="diagnosisForm">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="animalType" class="form-label">
+                                        <i class="bi bi-paw"></i> Вид животного
+                                    </label>
+                                    <select class="form-select" id="animalType" name="animal_type" required>
+                                        <option value="">Выберите вид животного</option>
+                                        <option value="собака">Собака</option>
+                                        <option value="кошка">Кошка</option>
+                                        <option value="хомяк">Хомяк</option>
+                                        <option value="птица">Птица</option>
+                                        <option value="кролик">Кролик</option>
+                                        <option value="черепаха">Черепаха</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">
+                                        <i class="bi bi-list-check"></i> Симптомы
+                                    </label>
+                                    <div class="form-text">Отметьте все наблюдаемые симптомы</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-3">
+                                <h6 class="text-primary">Общие симптомы</h6>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="температура_повышена"
+                                        id="temp_high">
+                                    <label class="form-check-label" for="temp_high">Повышенная температура</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="температура_понижена"
+                                        id="temp_low">
+                                    <label class="form-check-label" for="temp_low">Пониженная температура</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="аппетит_снижен"
+                                        id="appetite_low">
+                                    <label class="form-check-label" for="appetite_low">Сниженный аппетит</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="аппетит_повышен"
+                                        id="appetite_high">
+                                    <label class="form-check-label" for="appetite_high">Повышенный аппетит</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="вялость" id="lethargy">
+                                    <label class="form-check-label" for="lethargy">Вялость</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="слабость" id="weakness">
+                                    <label class="form-check-label" for="weakness">Слабость</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="депрессия" id="depression">
+                                    <label class="form-check-label" for="depression">Депрессия</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="беспокойство" id="anxiety">
+                                    <label class="form-check-label" for="anxiety">Беспокойство</label>
+                                </div>
+                            </div>
+
+                            <div class="col-md-3">
+                                <h6 class="text-primary">Желудочно-кишечные</h6>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="рвота" id="vomit">
+                                    <label class="form-check-label" for="vomit">Рвота</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="диарея" id="diarrhea">
+                                    <label class="form-check-label" for="diarrhea">Диарея</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="запор" id="constipation">
+                                    <label class="form-check-label" for="constipation">Запор</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="вздутие_живота"
+                                        id="bloating">
+                                    <label class="form-check-label" for="bloating">Вздутие живота</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="боль_в_животе"
+                                        id="abdominal_pain">
+                                    <label class="form-check-label" for="abdominal_pain">Боль в животе</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="слюнотечение" id="drooling">
+                                    <label class="form-check-label" for="drooling">Слюнотечение</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="тошнота" id="nausea">
+                                    <label class="form-check-label" for="nausea">Тошнота</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="кровь_в_кале"
+                                        id="blood_stool">
+                                    <label class="form-check-label" for="blood_stool">Кровь в кале</label>
+                                </div>
+                            </div>
+
+                            <div class="col-md-3">
+                                <h6 class="text-primary">Дыхательные</h6>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="кашель" id="cough">
+                                    <label class="form-check-label" for="cough">Кашель</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="чихание" id="sneeze">
+                                    <label class="form-check-label" for="sneeze">Чихание</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="выделения_из_носа"
+                                        id="nose_discharge">
+                                    <label class="form-check-label" for="nose_discharge">Выделения из носа</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="затрудненное_дыхание"
+                                        id="breathing_difficulty">
+                                    <label class="form-check-label" for="breathing_difficulty">Затрудненное
+                                        дыхание</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="учащенное_дыхание"
+                                        id="rapid_breathing">
+                                    <label class="form-check-label" for="rapid_breathing">Учащенное дыхание</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="хрипы" id="wheezing">
+                                    <label class="form-check-label" for="wheezing">Хрипы</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="одышка"
+                                        id="shortness_breath">
+                                    <label class="form-check-label" for="shortness_breath">Одышка</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="кровь_из_носа"
+                                        id="nose_bleed">
+                                    <label class="form-check-label" for="nose_bleed">Кровь из носа</label>
+                                </div>
+                            </div>
+
+                            <div class="col-md-3">
+                                <h6 class="text-primary">Кожа и шерсть</h6>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="зуд" id="itching">
+                                    <label class="form-check-label" for="itching">Зуд</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="выпадение_шерсти"
+                                        id="hair_loss">
+                                    <label class="form-check-label" for="hair_loss">Выпадение шерсти</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="покраснение_кожи"
+                                        id="skin_redness">
+                                    <label class="form-check-label" for="skin_redness">Покраснение кожи</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="сыпь" id="rash">
+                                    <label class="form-check-label" for="rash">Сыпь</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="язвы_на_коже"
+                                        id="skin_ulcers">
+                                    <label class="form-check-label" for="skin_ulcers">Язвы на коже</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="сухая_кожа" id="dry_skin">
+                                    <label class="form-check-label" for="dry_skin">Сухая кожа</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="жирная_кожа" id="oily_skin">
+                                    <label class="form-check-label" for="oily_skin">Жирная кожа</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="перхоть" id="dandruff">
+                                    <label class="form-check-label" for="dandruff">Перхоть</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row mt-3">
+                            <div class="col-md-3">
+                                <h6 class="text-primary">Глаза</h6>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="выделения_из_глаз"
+                                        id="eye_discharge">
+                                    <label class="form-check-label" for="eye_discharge">Выделения из глаз</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="покраснение_глаз"
+                                        id="eye_redness">
+                                    <label class="form-check-label" for="eye_redness">Покраснение глаз</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="помутнение_глаз"
+                                        id="eye_cloudiness">
+                                    <label class="form-check-label" for="eye_cloudiness">Помутнение глаз</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="слезотечение" id="tearing">
+                                    <label class="form-check-label" for="tearing">Слезотечение</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="светобоязнь"
+                                        id="photophobia">
+                                    <label class="form-check-label" for="photophobia">Светобоязнь</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="косоглазие" id="strabismus">
+                                    <label class="form-check-label" for="strabismus">Косоглазие</label>
+                                </div>
+                            </div>
+
+                            <div class="col-md-3">
+                                <h6 class="text-primary">Неврологические</h6>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="судороги" id="seizures">
+                                    <label class="form-check-label" for="seizures">Судороги</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="паралич" id="paralysis">
+                                    <label class="form-check-label" for="paralysis">Паралич</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="нарушение_координации"
+                                        id="coordination">
+                                    <label class="form-check-label" for="coordination">Нарушение координации</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="головокружение"
+                                        id="dizziness">
+                                    <label class="form-check-label" for="dizziness">Головокружение</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="потеря_сознания"
+                                        id="unconsciousness">
+                                    <label class="form-check-label" for="unconsciousness">Потеря сознания</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="изменение_поведения"
+                                        id="behavior_change">
+                                    <label class="form-check-label" for="behavior_change">Изменение поведения</label>
+                                </div>
+                            </div>
+
+                            <div class="col-md-3">
+                                <h6 class="text-primary">Мочеполовые</h6>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="частое_мочеиспускание"
+                                        id="frequent_urination">
+                                    <label class="form-check-label" for="frequent_urination">Частое
+                                        мочеиспускание</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="редкое_мочеиспускание"
+                                        id="rare_urination">
+                                    <label class="form-check-label" for="rare_urination">Редкое мочеиспускание</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="кровь_в_моче"
+                                        id="blood_urine">
+                                    <label class="form-check-label" for="blood_urine">Кровь в моче</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="болезненное_мочеиспускание"
+                                        id="painful_urination">
+                                    <label class="form-check-label" for="painful_urination">Болезненное
+                                        мочеиспускание</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="недержание_мочи"
+                                        id="incontinence">
+                                    <label class="form-check-label" for="incontinence">Недержание мочи</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="увеличение_живота"
+                                        id="abdominal_enlargement">
+                                    <label class="form-check-label" for="abdominal_enlargement">Увеличение
+                                        живота</label>
+                                </div>
+                            </div>
+
+                            <div class="col-md-3">
+                                <h6 class="text-primary">Опорно-двигательные</h6>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="хромота" id="lameness">
+                                    <label class="form-check-label" for="lameness">Хромота</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="скованность_движений"
+                                        id="stiffness">
+                                    <label class="form-check-label" for="stiffness">Скованность движений</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="боль_в_суставах"
+                                        id="joint_pain">
+                                    <label class="form-check-label" for="joint_pain">Боль в суставах</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="мышечная_слабость"
+                                        id="muscle_weakness">
+                                    <label class="form-check-label" for="muscle_weakness">Мышечная слабость</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="деформация_конечностей"
+                                        id="limb_deformity">
+                                    <label class="form-check-label" for="limb_deformity">Деформация конечностей</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="нежелание_двигаться"
+                                        id="reluctance_move">
+                                    <label class="form-check-label" for="reluctance_move">Нежелание двигаться</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row mt-3">
+                            <div class="col-md-3">
+                                <h6 class="text-primary">Сердечно-сосудистые</h6>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="учащенное_сердцебиение"
+                                        id="rapid_heartbeat">
+                                    <label class="form-check-label" for="rapid_heartbeat">Учащенное сердцебиение</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="замедленное_сердцебиение"
+                                        id="slow_heartbeat">
+                                    <label class="form-check-label" for="slow_heartbeat">Замедленное
+                                        сердцебиение</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="отеки" id="edema">
+                                    <label class="form-check-label" for="edema">Отеки</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="бледность_слизистых"
+                                        id="pale_mucous">
+                                    <label class="form-check-label" for="pale_mucous">Бледность слизистых</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="синюшность_слизистых"
+                                        id="cyanosis">
+                                    <label class="form-check-label" for="cyanosis">Синюшность слизистых</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="холодные_конечности"
+                                        id="cold_limbs">
+                                    <label class="form-check-label" for="cold_limbs">Холодные конечности</label>
+                                </div>
+                            </div>
+
+                            <div class="col-md-3">
+                                <h6 class="text-primary">Другие симптомы</h6>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="увеличение_лимфоузлов"
+                                        id="lymph_nodes">
+                                    <label class="form-check-label" for="lymph_nodes">Увеличение лимфоузлов</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="потеря_веса"
+                                        id="weight_loss">
+                                    <label class="form-check-label" for="weight_loss">Потеря веса</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="увеличение_веса"
+                                        id="weight_gain">
+                                    <label class="form-check-label" for="weight_gain">Увеличение веса</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="жажда" id="thirst">
+                                    <label class="form-check-label" for="thirst">Жажда</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="полиурия" id="polyuria">
+                                    <label class="form-check-label" for="polyuria">Полиурия</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="полидипсия" id="polydipsia">
+                                    <label class="form-check-label" for="polydipsia">Полидипсия</label>
+                                </div>
+                            </div>
+
+                            <div class="col-md-3">
+                                <h6 class="text-primary">Стоматологические</h6>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="неприятный_запах_изо_рта"
+                                        id="bad_breath">
+                                    <label class="form-check-label" for="bad_breath">Неприятный запах изо рта</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="кровоточивость_десен"
+                                        id="bleeding_gums">
+                                    <label class="form-check-label" for="bleeding_gums">Кровоточивость десен</label>
+                                </div>
+                            </div>
+
+                            <div class="col-md-3">
+                                <h6 class="text-primary">Дополнительные</h6>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="агрессия" id="aggression">
+                                    <label class="form-check-label" for="aggression">Агрессия</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="выпячивание_глаз"
+                                        id="eye_bulging">
+                                    <label class="form-check-label" for="eye_bulging">Выпячивание глаз</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="пятна_на_коже"
+                                        id="skin_spots">
+                                    <label class="form-check-label" for="skin_spots">Пятна на коже</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Лабораторные анализы -->
+                        <div class="row mt-4">
+                            <div class="col-12">
+                                <h5 class="text-primary mb-3">
+                                    <i class="bi bi-clipboard-data"></i>
+                                    Лабораторные анализы (опционально)
+                                </h5>
+                                <div class="alert alert-info">
+                                    <i class="bi bi-info-circle"></i>
+                                    <strong>Информация:</strong> Укажите результаты анализов для более точной
+                                    диагностики.
+                                    Выберите "ниже нормы", "норма" или "выше нормы" для каждого показателя.
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-4">
+                                <h6 class="text-primary">Общий анализ крови (ОАК)</h6>
+                                <div class="mb-2">
+                                    <label class="form-label">Лейкоциты</label>
+                                    <select class="form-select form-select-sm" name="lab_wbc">
+                                        <option value="">Не указано</option>
+                                        <option value="ниже_нормы">Ниже нормы</option>
+                                        <option value="норма">Норма</option>
+                                        <option value="выше_нормы">Выше нормы</option>
+                                    </select>
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label">Эритроциты</label>
+                                    <select class="form-select form-select-sm" name="lab_rbc">
+                                        <option value="">Не указано</option>
+                                        <option value="ниже_нормы">Ниже нормы</option>
+                                        <option value="норма">Норма</option>
+                                        <option value="выше_нормы">Выше нормы</option>
+                                    </select>
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label">Гемоглобин</label>
+                                    <select class="form-select form-select-sm" name="lab_hgb">
+                                        <option value="">Не указано</option>
+                                        <option value="ниже_нормы">Ниже нормы</option>
+                                        <option value="норма">Норма</option>
+                                        <option value="выше_нормы">Выше нормы</option>
+                                    </select>
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label">Тромбоциты</label>
+                                    <select class="form-select form-select-sm" name="lab_plt">
+                                        <option value="">Не указано</option>
+                                        <option value="ниже_нормы">Ниже нормы</option>
+                                        <option value="норма">Норма</option>
+                                        <option value="выше_нормы">Выше нормы</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="col-md-4">
+                                <h6 class="text-primary">Биохимический анализ крови (БАК)</h6>
+                                <div class="mb-2">
+                                    <label class="form-label">Глюкоза</label>
+                                    <select class="form-select form-select-sm" name="lab_glucose">
+                                        <option value="">Не указано</option>
+                                        <option value="ниже_нормы">Ниже нормы</option>
+                                        <option value="норма">Норма</option>
+                                        <option value="выше_нормы">Выше нормы</option>
+                                    </select>
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label">Мочевина</label>
+                                    <select class="form-select form-select-sm" name="lab_urea">
+                                        <option value="">Не указано</option>
+                                        <option value="ниже_нормы">Ниже нормы</option>
+                                        <option value="норма">Норма</option>
+                                        <option value="выше_нормы">Выше нормы</option>
+                                    </select>
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label">Креатинин</label>
+                                    <select class="form-select form-select-sm" name="lab_creatinine">
+                                        <option value="">Не указано</option>
+                                        <option value="ниже_нормы">Ниже нормы</option>
+                                        <option value="норма">Норма</option>
+                                        <option value="выше_нормы">Выше нормы</option>
+                                    </select>
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label">АЛТ (Аланинаминотрансфераза)</label>
+                                    <select class="form-select form-select-sm" name="lab_alt">
+                                        <option value="">Не указано</option>
+                                        <option value="ниже_нормы">Ниже нормы</option>
+                                        <option value="норма">Норма</option>
+                                        <option value="выше_нормы">Выше нормы</option>
+                                    </select>
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label">АСТ (Аспартатаминотрансфераза)</label>
+                                    <select class="form-select form-select-sm" name="lab_ast">
+                                        <option value="">Не указано</option>
+                                        <option value="ниже_нормы">Ниже нормы</option>
+                                        <option value="норма">Норма</option>
+                                        <option value="выше_нормы">Выше нормы</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="col-md-4">
+                                <h6 class="text-primary">Биохимический анализ мочи (БАМ)</h6>
+                                <div class="mb-2">
+                                    <label class="form-label">Белок в моче</label>
+                                    <select class="form-select form-select-sm" name="lab_urine_protein">
+                                        <option value="">Не указано</option>
+                                        <option value="ниже_нормы">Ниже нормы</option>
+                                        <option value="норма">Норма</option>
+                                        <option value="выше_нормы">Выше нормы</option>
+                                    </select>
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label">Глюкоза в моче</label>
+                                    <select class="form-select form-select-sm" name="lab_urine_glucose">
+                                        <option value="">Не указано</option>
+                                        <option value="ниже_нормы">Ниже нормы</option>
+                                        <option value="норма">Норма</option>
+                                        <option value="выше_нормы">Выше нормы</option>
+                                    </select>
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label">Лейкоциты в моче</label>
+                                    <select class="form-select form-select-sm" name="lab_urine_wbc">
+                                        <option value="">Не указано</option>
+                                        <option value="ниже_нормы">Ниже нормы</option>
+                                        <option value="норма">Норма</option>
+                                        <option value="выше_нормы">Выше нормы</option>
+                                    </select>
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label">Эритроциты в моче</label>
+                                    <select class="form-select form-select-sm" name="lab_urine_rbc">
+                                        <option value="">Не указано</option>
+                                        <option value="ниже_нормы">Ниже нормы</option>
+                                        <option value="норма">Норма</option>
+                                        <option value="выше_нормы">Выше нормы</option>
+                                    </select>
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label">Удельная плотность мочи</label>
+                                    <select class="form-select form-select-sm" name="lab_urine_sg">
+                                        <option value="">Не указано</option>
+                                        <option value="ниже_нормы">Ниже нормы</option>
+                                        <option value="норма">Норма</option>
+                                        <option value="выше_нормы">Выше нормы</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row mt-4">
+                            <div class="col-12 text-center">
+                                <button type="submit" class="btn btn-primary btn-lg">
+                                    <i class="bi bi-search"></i>
+                                    Диагностировать заболевание
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+
+                    <!-- Результаты диагностики -->
+                    <div id="results" class="mt-4" style="display: none;">
+                        <div class="card border-success">
+                            <div class="card-header bg-success text-white">
+                                <h5 class="mb-0">
+                                    <i class="bi bi-clipboard-check"></i>
+                                    Результаты диагностики
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div id="diagnosisResults"></div>
+                                <div class="alert alert-info mt-3">
+                                    <i class="bi bi-info-circle"></i>
+                                    <strong>Важно:</strong> Данная диагностика носит информационный характер.
+                                    Обязательно обратитесь к ветеринарному врачу для точной постановки диагноза и
+                                    назначения лечения.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.getElementById('diagnosisForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+
+        const animalType = document.getElementById('animalType').value;
+        const checkboxes = document.querySelectorAll('input[type="checkbox"]:checked');
+        const symptoms = Array.from(checkboxes).map(cb => cb.value);
+
+        // Собираем лабораторные анализы
+        const labAnalyses = {};
+        const labSelects = document.querySelectorAll('select[name^="lab_"]');
+        labSelects.forEach(select => {
+            if (select.value) {
+                labAnalyses[select.name] = select.value;
+            }
+        });
+
+        if (!animalType) {
+            alert('Пожалуйста, выберите вид животного');
+            return;
+        }
+
+        if (symptoms.length === 0) {
+            alert('Пожалуйста, отметьте хотя бы один симптом');
+            return;
+        }
+
+        // Показываем индикатор загрузки
+        const submitBtn = document.querySelector('button[type="submit"]');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Анализируем...';
+        submitBtn.disabled = true;
+
+        // Отправляем запрос на сервер
+        const requestData = {
+            animal_type: animalType,
+            symptoms: symptoms,
+            lab_analyses: labAnalyses
+        };
+
+        fetch('/diagnose', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(requestData)
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    displayResults(data.predictions);
+                } else {
+                    alert('Ошибка при диагностике: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Произошла ошибка при отправке запроса');
+            })
+            .finally(() => {
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+            });
+    });
+
+    function displayResults(predictions) {
+        const resultsDiv = document.getElementById('diagnosisResults');
+        const resultsContainer = document.getElementById('results');
+
+        let html = '<h6>Возможные заболевания (по убыванию вероятности):</h6>';
+        html += '<div class="list-group">';
+
+        predictions.forEach((prediction, index) => {
+            const disease = prediction[0];
+            const probability = prediction[1];
+            const percentage = (probability * 100).toFixed(1);
+
+            // Определяем цвет карточки в зависимости от вероятности
+            let cardClass = 'list-group-item';
+            if (probability > 0.7) {
+                cardClass += ' list-group-item-danger';
+            } else if (probability > 0.4) {
+                cardClass += ' list-group-item-warning';
+            } else {
+                cardClass += ' list-group-item-info';
+            }
+
+            html += `
+            <div class="${cardClass}">
+                <div class="d-flex w-100 justify-content-between">
+                    <h6 class="mb-1">${index + 1}. ${disease.replace('_', ' ').toUpperCase()}</h6>
+                    <small>${percentage}%</small>
+                </div>
+                <div class="progress mt-2" style="height: 8px;">
+                    <div class="progress-bar" role="progressbar" style="width: ${percentage}%"></div>
+                </div>
+            </div>
+        `;
+        });
+
+        html += '</div>';
+        resultsDiv.innerHTML = html;
+        resultsContainer.style.display = 'block';
+
+        // Прокручиваем к результатам
+        resultsContainer.scrollIntoView({ behavior: 'smooth' });
+    }
+</script>
+{% endblock %}

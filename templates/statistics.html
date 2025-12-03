@@ -33,6 +33,11 @@
         box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
     }
 
+    .chart-container .chart-container {
+        margin-bottom: 1rem;
+        padding: 1rem;
+    }
+
     .chart-title {
         font-size: 1.3rem;
         font-weight: bold;
@@ -54,6 +59,38 @@
         gap: 2rem;
     }
 
+    .filters-container {
+        background: white;
+        border-radius: 15px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    }
+
+    .comparison-badge {
+        display: inline-block;
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.375rem;
+        font-size: 0.875rem;
+        font-weight: 500;
+        margin-left: 0.5rem;
+    }
+
+    .comparison-positive {
+        background-color: #dcfce7;
+        color: #166534;
+    }
+
+    .comparison-negative {
+        background-color: #fef2f2;
+        color: #dc2626;
+    }
+
+    .comparison-neutral {
+        background-color: #f3f4f6;
+        color: #374151;
+    }
+
     @media (max-width: 768px) {
         .chart-grid {
             grid-template-columns: 1fr;
@@ -65,6 +102,51 @@
 
         .stat-card h3 {
             font-size: 2rem;
+        }
+    }
+
+    /* Стили для тёмной темы */
+    body.dark-theme .chart-container,
+    body.dark-theme .filters-container {
+        background-color: #2d2d2d;
+        color: #e0e0e0;
+    }
+
+    body.dark-theme .chart-container .chart-container {
+        background-color: #1f1f1f;
+    }
+
+    body.dark-theme .chart-title {
+        color: #e0e0e0;
+    }
+
+    body.dark-theme .stat-card {
+        background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%);
+    }
+
+    body.dark-theme .table-light {
+        background-color: #3a3a3a;
+        color: #e0e0e0;
+    }
+
+    body.dark-theme .sticky-top {
+        background-color: #3a3a3a !important;
+    }
+
+    /* Стили для формы выбора месяца */
+    .vaccine-month-selector {
+        gap: 0.5rem;
+    }
+
+    @media (max-width: 576px) {
+        .vaccine-month-selector {
+            flex-direction: column;
+            width: 100%;
+        }
+
+        .vaccine-month-selector select,
+        .vaccine-month-selector button {
+            width: 100% !important;
         }
     }
 </style>
@@ -80,6 +162,44 @@
         </div>
     </div>
 
+    <!-- Фильтры -->
+    <div class="filters-container">
+        <h5 class="mb-3"><i class="bi bi-funnel"></i> Фильтры и настройки</h5>
+        <form method="GET" class="row g-3">
+            <div class="col-md-4">
+                <label for="period" class="form-label">Период анализа</label>
+                <select class="form-select" id="period" name="period">
+                    <option value="month" {% if period=='month' %}selected{% endif %}>Последний месяц</option>
+                    <option value="3months" {% if period=='3months' %}selected{% endif %}>Последние 3 месяца</option>
+                    <option value="6months" {% if period=='6months' %}selected{% endif %}>Последние 6 месяцев</option>
+                    <option value="year" {% if period=='year' %}selected{% endif %}>Последний год</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label for="compare" class="form-label">Сравнение</label>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="compare" name="compare" value="true" {% if
+                        compare_with_previous %}checked{% endif %}>
+                    <label class="form-check-label" for="compare">
+                        Сравнить с предыдущим периодом
+                    </label>
+                </div>
+            </div>
+            <div class="col-md-4 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-arrow-clockwise"></i> Обновить
+                </button>
+            </div>
+        </form>
+        <div class="mt-2">
+            <small class="text-muted">
+                <i class="bi bi-info-circle"></i>
+                Показана статистика {{ period_name }}
+                {% if compare_with_previous %}с сравнением с предыдущим периодом{% endif %}
+            </small>
+        </div>
+    </div>
+
     <!-- Общая статистика -->
     <div class="stats-grid">
         <div class="stat-card">
@@ -91,12 +211,129 @@
             <p><i class="bi bi-people"></i> Владельцев</p>
         </div>
         <div class="stat-card">
-            <h3>{{ total_vaccinations }}</h3>
-            <p><i class="bi bi-eyedropper"></i> Вакцинаций</p>
+            <h3>{{ period_vaccinations }}</h3>
+            <p><i class="bi bi-eyedropper"></i> Вакцинаций {{ period_name }}</p>
         </div>
         <div class="stat-card">
-            <h3>{{ total_appointments }}</h3>
-            <p><i class="bi bi-calendar-check"></i> Приёмов</p>
+            <h3>{{ period_appointments }}</h3>
+            <p><i class="bi bi-calendar-check"></i> Приёмов {{ period_name }}</p>
+        </div>
+        <div class="stat-card">
+            <h3>{{ "%.0f"|format(avg_check) }} ₽</h3>
+            <p><i class="bi bi-cash-coin"></i> Средний чек</p>
+        </div>
+        <div class="stat-card">
+            <h3>{{ "%.0f"|format(total_revenue) }} ₽</h3>
+            <p><i class="bi bi-graph-up-arrow"></i> Доход {{ period_name }}</p>
+        </div>
+    </div>
+
+    <!-- Статистика по вакцинам за последний месяц -->
+    <div class="chart-container mb-4">
+        <div class="chart-title d-flex justify-content-between align-items-center flex-wrap">
+            <span>
+                <i class="bi bi-calendar-event"></i> {{ last_month_name }}
+            </span>
+            <form method="GET" class="d-flex gap-2 align-items-center vaccine-month-selector">
+                <!-- Сохраняем параметры основных фильтров -->
+                <input type="hidden" name="period" value="{{ period }}">
+                {% if compare_with_previous %}
+                <input type="hidden" name="compare" value="true">
+                {% endif %}
+                
+                <select name="vaccine_month" class="form-select form-select-sm" style="width: auto;">
+                    {% for m in range(1, 13) %}
+                    <option value="{{ m }}" {% if m == selected_vaccine_month %}selected{% endif %}>
+                        {{ ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 
+                            'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'][m-1] }}
+                    </option>
+                    {% endfor %}
+                </select>
+                <select name="vaccine_year" class="form-select form-select-sm" style="width: auto;">
+                    {% for y in vaccine_years %}
+                    <option value="{{ y }}" {% if y == selected_vaccine_year %}selected{% endif %}>{{ y }}</option>
+                    {% endfor %}
+                </select>
+                <button type="submit" class="btn btn-sm btn-primary">
+                    <i class="bi bi-search"></i> Показать
+                </button>
+            </form>
+        </div>
+        
+        {% if last_month_vaccines_detail %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width: 70%">Название вакцины</th>
+                        <th class="text-center" style="width: 30%">Количество</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in last_month_vaccines_detail %}
+                    <tr>
+                        <td>{{ item.vaccine_name }}</td>
+                        <td class="text-center"><strong>{{ item.count }}</strong></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot class="table-light">
+                    <tr>
+                        <th>Всего вакцинаций</th>
+                        <th class="text-center"><strong>{{ last_month_vaccines_detail | sum(attribute='count') }}</strong></th>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+        {% else %}
+        <div class="alert alert-info" role="alert">
+            <i class="bi bi-info-circle"></i>
+            За последние 30 дней вакцинации не проводились.
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Статистика по годам за последние 5 лет -->
+    <div class="chart-container mb-4">
+        <div class="chart-title">
+            <i class="bi bi-calendar-range"></i> Статистика клиники по годам (последние 5 лет)
+        </div>
+        <div class="chart-grid">
+            <!-- График приёмов по годам -->
+            <div class="chart-container" style="margin-bottom: 0;">
+                <div class="chart-title" style="font-size: 1.1rem;">Приёмы по годам</div>
+                <canvas id="yearlyAppointmentsChart"></canvas>
+            </div>
+
+            <!-- График вакцинаций по годам -->
+            <div class="chart-container" style="margin-bottom: 0;">
+                <div class="chart-title" style="font-size: 1.1rem;">Вакцинации по годам</div>
+                <canvas id="yearlyVaccinationsChart"></canvas>
+            </div>
+
+            <!-- График доходов по годам -->
+            <div class="chart-container" style="margin-bottom: 0;">
+                <div class="chart-title" style="font-size: 1.1rem;">Доходы по годам</div>
+                <canvas id="yearlyRevenueChart"></canvas>
+            </div>
+
+            <!-- График среднего чека по годам -->
+            <div class="chart-container" style="margin-bottom: 0;">
+                <div class="chart-title" style="font-size: 1.1rem;">Средний чек по годам</div>
+                <canvas id="yearlyAvgCheckChart"></canvas>
+            </div>
+
+            <!-- График новых животных по годам -->
+            <div class="chart-container" style="margin-bottom: 0;">
+                <div class="chart-title" style="font-size: 1.1rem;">Новых животных по годам</div>
+                <canvas id="yearlyNewPetsChart"></canvas>
+            </div>
+
+            <!-- График общего количества животных по годам -->
+            <div class="chart-container" style="margin-bottom: 0;">
+                <div class="chart-title" style="font-size: 1.1rem;">Всего животных (накопленное)</div>
+                <canvas id="yearlyTotalPetsChart"></canvas>
+            </div>
         </div>
     </div>
 
@@ -104,7 +341,9 @@
     <div class="chart-grid">
         <!-- График вакцинаций по месяцам -->
         <div class="chart-container">
-            <div class="chart-title">Вакцинации по месяцам (последний год)</div>
+            <div class="chart-title">
+                Вакцинации по месяцам
+            </div>
             <canvas id="vaccinationChart"></canvas>
         </div>
 
@@ -128,14 +367,36 @@
 
         <!-- График приёмов по месяцам -->
         <div class="chart-container">
-            <div class="chart-title">Приёмы по месяцам (последний год)</div>
+            <div class="chart-title">
+                Приёмы по месяцам
+                {% if compare_with_previous %}
+                <span class="comparison-badge comparison-neutral">сравнение</span>
+                {% endif %}
+            </div>
             <canvas id="appointmentChart"></canvas>
         </div>
 
         <!-- График доходов по месяцам -->
         <div class="chart-container">
-            <div class="chart-title">Доходы по месяцам (последний год)</div>
+            <div class="chart-title">
+                Доходы по месяцам
+                {% if compare_with_previous %}
+                <span class="comparison-badge comparison-neutral">сравнение</span>
+                {% endif %}
+            </div>
             <canvas id="revenueChart"></canvas>
+        </div>
+
+        <!-- График популярных услуг -->
+        <div class="chart-container">
+            <div class="chart-title">Топ-15 популярных услуг</div>
+            <canvas id="popularTreatmentsChart"></canvas>
+        </div>
+
+        <!-- График категорий услуг -->
+        <div class="chart-container">
+            <div class="chart-title">Доходы по категориям услуг</div>
+            <canvas id="treatmentCategoriesChart"></canvas>
         </div>
     </div>
 </div>
@@ -146,40 +407,86 @@
         const monthNames = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн',
             'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
 
-        // График вакцинаций по месяцам
+        // График вакцинаций по месяцам (по типам)
         const vaccinationData = {{ vaccination_stats | tojson
     }};
+    const vaccinationTypesMonthlyData = {{ vaccination_types_monthly | tojson }};
+    const prevVaccinationData = {{ prev_vaccination_stats | tojson }};
+
+    // Получаем все уникальные месяцы
     const vaccinationLabels = vaccinationData.map(item =>
         `${monthNames[item.month - 1]} ${item.year}`
     );
-    const vaccinationCounts = vaccinationData.map(item => item.count);
+
+    // Получаем все уникальные типы вакцинаций
+    const vaccinationTypes = [...new Set(vaccinationTypesMonthlyData.map(item => item.vaccination_type))];
+
+    // Цвета для разных типов вакцинаций
+    const colors = [
+        'rgb(255, 99, 132)',   // Красный
+        'rgb(54, 162, 235)',   // Синий
+        'rgb(255, 205, 86)',   // Жёлтый
+        'rgb(75, 192, 192)',   // Зелёный
+        'rgb(153, 102, 255)',  // Фиолетовый
+        'rgb(255, 159, 64)',   // Оранжевый
+        'rgb(199, 199, 199)',  // Серый
+        'rgb(83, 102, 255)',   // Индиго
+        'rgb(255, 99, 255)',   // Розовый
+        'rgb(99, 255, 132)'    // Светло-зелёный
+    ];
+
+    // Создаём датасеты для каждого типа вакцинации
+    const vaccinationDatasets = vaccinationTypes.map((type, index) => {
+        const typeData = vaccinationTypesMonthlyData.filter(item => item.vaccination_type === type);
+        const counts = vaccinationLabels.map(label => {
+            const monthYear = label.split(' ');
+            const month = monthNames.indexOf(monthYear[0]) + 1;
+            const year = parseInt(monthYear[1]);
+            const found = typeData.find(item => item.month === month && item.year === year);
+            return found ? found.count : 0;
+        });
+
+        return {
+            label: type,
+            data: counts,
+            borderColor: colors[index % colors.length],
+            backgroundColor: colors[index % colors.length].replace('rgb', 'rgba').replace(')', ', 0.2)'),
+            tension: 0.1,
+            fill: false
+        };
+    });
+
+    // Добавляем общую линию (сумма всех типов)
+    const totalCounts = vaccinationData.map(item => item.count);
+    vaccinationDatasets.unshift({
+        label: 'Всего вакцинаций',
+        data: totalCounts,
+        borderColor: 'rgb(0, 0, 0)',
+        backgroundColor: 'rgba(0, 0, 0, 0.1)',
+        tension: 0.1,
+        fill: false,
+        borderWidth: 3
+    });
 
     new Chart(document.getElementById('vaccinationChart'), {
         type: 'line',
         data: {
             labels: vaccinationLabels,
-            datasets: [{
-                label: 'Количество вакцинаций',
-                data: vaccinationCounts,
-                borderColor: 'rgb(75, 192, 192)',
-                backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                tension: 0.1,
-                fill: true
-            }]
+            datasets: vaccinationDatasets
         },
         options: {
             responsive: true,
-            plugins: {
-                legend: {
-                    display: false
-                }
-            },
             scales: {
                 y: {
                     beginAtZero: true,
                     ticks: {
                         stepSize: 1
                     }
+                }
+            },
+            plugins: {
+                legend: {
+                    position: 'top'
                 }
             }
         }
@@ -197,12 +504,7 @@
             datasets: [{
                 data: vaccinationTypesCounts,
                 backgroundColor: [
-                    '#FF6384',
-                    '#36A2EB',
-                    '#FFCE56',
-                    '#4BC0C0',
-                    '#9966FF',
-                    '#FF9F40'
+                    '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40'
                 ]
             }]
         },
@@ -216,10 +518,11 @@
         }
     });
 
-    // График видов животных
+    // График видов животных (только с животными)
     const speciesData = {{ species_stats | tojson }};
-    const speciesLabels = speciesData.map(item => item.species);
-    const speciesCounts = speciesData.map(item => item.count);
+    const speciesWithAnimals = speciesData.filter(item => item.count > 0);
+    const speciesLabels = speciesWithAnimals.map(item => item.species);
+    const speciesCounts = speciesWithAnimals.map(item => item.count);
 
     new Chart(document.getElementById('speciesChart'), {
         type: 'bar',
@@ -228,22 +531,8 @@
             datasets: [{
                 label: 'Количество животных',
                 data: speciesCounts,
-                backgroundColor: [
-                    'rgba(255, 99, 132, 0.8)',
-                    'rgba(54, 162, 235, 0.8)',
-                    'rgba(255, 205, 86, 0.8)',
-                    'rgba(75, 192, 192, 0.8)',
-                    'rgba(153, 102, 255, 0.8)',
-                    'rgba(255, 159, 64, 0.8)'
-                ],
-                borderColor: [
-                    'rgba(255, 99, 132, 1)',
-                    'rgba(54, 162, 235, 1)',
-                    'rgba(255, 205, 86, 1)',
-                    'rgba(75, 192, 192, 1)',
-                    'rgba(153, 102, 255, 1)',
-                    'rgba(255, 159, 64, 1)'
-                ],
+                backgroundColor: 'rgba(54, 162, 235, 0.8)',
+                borderColor: 'rgba(54, 162, 235, 1)',
                 borderWidth: 1
             }]
         },
@@ -277,11 +566,7 @@
             datasets: [{
                 data: ageCounts,
                 backgroundColor: [
-                    '#FF6384',
-                    '#36A2EB',
-                    '#FFCE56',
-                    '#4BC0C0',
-                    '#9966FF'
+                    '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF'
                 ]
             }]
         },
@@ -297,20 +582,113 @@
 
     // График приёмов по месяцам
     const appointmentData = {{ appointment_stats | tojson }};
+    const prevAppointmentData = {{ prev_appointment_stats | tojson }};
     const appointmentLabels = appointmentData.map(item =>
         `${monthNames[item.month - 1]} ${item.year}`
     );
     const appointmentCounts = appointmentData.map(item => item.count);
+    const prevAppointmentCounts = prevAppointmentData.map(item => item.count);
 
     new Chart(document.getElementById('appointmentChart'), {
         type: 'bar',
         data: {
             labels: appointmentLabels,
+            datasets: [
+                {
+                    label: 'Текущий период',
+                    data: appointmentCounts,
+                    backgroundColor: 'rgba(54, 162, 235, 0.8)',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 1
+                }
+                {% if compare_with_previous %}
+        ,{
+        label: 'Предыдущий период',
+        data: prevAppointmentCounts,
+        backgroundColor: 'rgba(255, 99, 132, 0.8)',
+        borderColor: 'rgba(255, 99, 132, 1)',
+        borderWidth: 1
+    }
+                {% endif %}
+            ]
+        },
+        options: {
+        responsive: true,
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    stepSize: 1
+                }
+            }
+        }
+    }
+    });
+
+    // График доходов по месяцам
+    const revenueData = {{ appointment_costs | tojson }};
+    const prevRevenueData = {{ prev_appointment_costs | tojson }};
+    const revenueLabels = revenueData.map(item =>
+        `${monthNames[item.month - 1]} ${item.year}`
+    );
+    const revenueAmounts = revenueData.map(item => item.total_cost || 0);
+    const prevRevenueAmounts = prevRevenueData.map(item => item.total_cost || 0);
+
+    new Chart(document.getElementById('revenueChart'), {
+        type: 'line',
+        data: {
+            labels: revenueLabels,
+            datasets: [
+                {
+                    label: 'Текущий период',
+                    data: revenueAmounts,
+                    borderColor: 'rgb(34, 197, 94)',
+                    backgroundColor: 'rgba(34, 197, 94, 0.2)',
+                    tension: 0.1,
+                    fill: true
+                }
+                {% if compare_with_previous %}
+        ,{
+        label: 'Предыдущий период',
+        data: prevRevenueAmounts,
+        borderColor: 'rgb(239, 68, 68)',
+        backgroundColor: 'rgba(239, 68, 68, 0.2)',
+        tension: 0.1,
+        fill: false,
+        borderDash: [5, 5]
+    }
+                {% endif %}
+            ]
+        },
+        options: {
+        responsive: true,
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    callback: function (value) {
+                        return value.toLocaleString() + ' ₽';
+                    }
+                }
+            }
+        }
+    }
+    });
+
+    // График популярных услуг
+    const popularTreatmentsData = {{ popular_treatments | tojson }};
+    const popularTreatmentsLabels = popularTreatmentsData.map(item => item.name);
+    const popularTreatmentsCounts = popularTreatmentsData.map(item => item.count);
+
+    new Chart(document.getElementById('popularTreatmentsChart'), {
+        type: 'bar',
+        data: {
+            labels: popularTreatmentsLabels,
             datasets: [{
-                label: 'Количество приёмов',
-                data: appointmentCounts,
-                backgroundColor: 'rgba(54, 162, 235, 0.8)',
-                borderColor: 'rgba(54, 162, 235, 1)',
+                label: 'Количество использований',
+                data: popularTreatmentsCounts,
+                backgroundColor: 'rgba(75, 192, 192, 0.8)',
+                borderColor: 'rgba(75, 192, 192, 1)',
                 borderWidth: 1
             }]
         },
@@ -332,24 +710,59 @@
         }
     });
 
-    // График доходов по месяцам
-    const revenueData = {{ appointment_costs | tojson }};
-    const revenueLabels = revenueData.map(item =>
-        `${monthNames[item.month - 1]} ${item.year}`
-    );
-    const revenueAmounts = revenueData.map(item => item.total_cost || 0);
+    // График категорий услуг
+    const treatmentCategoriesData = {{ treatment_categories | tojson }};
+    const treatmentCategoriesLabels = treatmentCategoriesData.map(item => item.category);
+    const treatmentCategoriesRevenue = treatmentCategoriesData.map(item => item.total_revenue);
 
-    new Chart(document.getElementById('revenueChart'), {
-        type: 'line',
+    new Chart(document.getElementById('treatmentCategoriesChart'), {
+        type: 'doughnut',
         data: {
-            labels: revenueLabels,
+            labels: treatmentCategoriesLabels,
             datasets: [{
-                label: 'Доходы (руб.)',
-                data: revenueAmounts,
-                borderColor: 'rgb(255, 99, 132)',
-                backgroundColor: 'rgba(255, 99, 132, 0.2)',
-                tension: 0.1,
-                fill: true
+                data: treatmentCategoriesRevenue,
+                backgroundColor: [
+                    '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40'
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function (context) {
+                            return context.label + ': ' + context.parsed.toLocaleString() + ' ₽';
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // === ГРАФИКИ ПО ГОДАМ ЗА ПОСЛЕДНИЕ 5 ЛЕТ ===
+    const yearlyAppointmentsData = {{ yearly_appointments_stats | tojson }};
+    const yearlyVaccinationsData = {{ yearly_vaccinations_stats | tojson }};
+    const yearlyRevenueData = {{ yearly_revenue_stats | tojson }};
+    const yearlyAvgCheckData = {{ yearly_avg_check | tojson }};
+    const yearlyNewPetsData = {{ yearly_pets_stats | tojson }};
+    const yearlyTotalPetsData = {{ yearly_total_pets | tojson }};
+    const yearsLabels = {{ years_list | tojson }};
+
+    // График приёмов по годам
+    new Chart(document.getElementById('yearlyAppointmentsChart'), {
+        type: 'bar',
+        data: {
+            labels: yearsLabels,
+            datasets: [{
+                label: 'Количество приёмов',
+                data: yearlyAppointmentsData.map(item => item.count),
+                backgroundColor: 'rgba(54, 162, 235, 0.8)',
+                borderColor: 'rgba(54, 162, 235, 1)',
+                borderWidth: 2
             }]
         },
         options: {
@@ -363,9 +776,188 @@
                 y: {
                     beginAtZero: true,
                     ticks: {
-                        callback: function (value) {
-                            return value.toLocaleString() + ' руб.';
+                        stepSize: 1
+                    }
+                }
+            }
+        }
+    });
+
+    // График вакцинаций по годам
+    new Chart(document.getElementById('yearlyVaccinationsChart'), {
+        type: 'bar',
+        data: {
+            labels: yearsLabels,
+            datasets: [{
+                label: 'Количество вакцинаций',
+                data: yearlyVaccinationsData.map(item => item.count),
+                backgroundColor: 'rgba(75, 192, 192, 0.8)',
+                borderColor: 'rgba(75, 192, 192, 1)',
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1
+                    }
+                }
+            }
+        }
+    });
+
+    // График доходов по годам
+    new Chart(document.getElementById('yearlyRevenueChart'), {
+        type: 'line',
+        data: {
+            labels: yearsLabels,
+            datasets: [{
+                label: 'Доход (₽)',
+                data: yearlyRevenueData.map(item => item.total_revenue),
+                borderColor: 'rgb(34, 197, 94)',
+                backgroundColor: 'rgba(34, 197, 94, 0.2)',
+                tension: 0.4,
+                fill: true,
+                borderWidth: 3
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return 'Доход: ' + context.parsed.y.toLocaleString('ru-RU') + ' ₽';
                         }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return value.toLocaleString('ru-RU') + ' ₽';
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // График среднего чека по годам
+    new Chart(document.getElementById('yearlyAvgCheckChart'), {
+        type: 'line',
+        data: {
+            labels: yearsLabels,
+            datasets: [{
+                label: 'Средний чек (₽)',
+                data: yearlyAvgCheckData.map(item => item.avg_check),
+                borderColor: 'rgb(239, 68, 68)',
+                backgroundColor: 'rgba(239, 68, 68, 0.2)',
+                tension: 0.4,
+                fill: true,
+                borderWidth: 3
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return 'Средний чек: ' + Math.round(context.parsed.y).toLocaleString('ru-RU') + ' ₽';
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return Math.round(value).toLocaleString('ru-RU') + ' ₽';
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // График новых животных по годам
+    new Chart(document.getElementById('yearlyNewPetsChart'), {
+        type: 'bar',
+        data: {
+            labels: yearsLabels,
+            datasets: [{
+                label: 'Новых животных',
+                data: yearlyNewPetsData.map(item => item.count),
+                backgroundColor: 'rgba(153, 102, 255, 0.8)',
+                borderColor: 'rgba(153, 102, 255, 1)',
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1
+                    }
+                }
+            }
+        }
+    });
+
+    // График общего количества животных по годам (накопленное)
+    new Chart(document.getElementById('yearlyTotalPetsChart'), {
+        type: 'line',
+        data: {
+            labels: yearsLabels,
+            datasets: [{
+                label: 'Всего животных',
+                data: yearlyTotalPetsData.map(item => item.total),
+                borderColor: 'rgb(255, 159, 64)',
+                backgroundColor: 'rgba(255, 159, 64, 0.2)',
+                tension: 0.4,
+                fill: true,
+                borderWidth: 3,
+                pointRadius: 5,
+                pointHoverRadius: 7
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1
                     }
                 }
             }

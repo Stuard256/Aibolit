@@ -1,0 +1,319 @@
+{% extends "base.html" %}
+
+{% block title %}Диагностика заболеваний{% endblock %}
+
+{% block head %}
+<meta name="csrf-token" content="{{ csrf_token() }}">
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="mb-0">
+                        <i class="bi bi-heart-pulse"></i>
+                        Диагностика заболеваний животных
+                    </h3>
+                    <small>Система машинного обучения для определения возможных заболеваний по симптомам</small>
+                </div>
+                <div class="card-body">
+                    <form id="diagnosisForm">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="animalType" class="form-label">
+                                        <i class="bi bi-paw"></i> Вид животного
+                                    </label>
+                                    <select class="form-select" id="animalType" name="animal_type" required>
+                                        <option value="">Выберите вид животного</option>
+                                        <option value="собака">Собака</option>
+                                        <option value="кошка">Кошка</option>
+                                        <option value="хомяк">Хомяк</option>
+                                        <option value="птица">Птица</option>
+                                        <option value="кролик">Кролик</option>
+                                        <option value="черепаха">Черепаха</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">
+                                        <i class="bi bi-list-check"></i> Симптомы
+                                    </label>
+                                    <div class="form-text">Отметьте все наблюдаемые симптомы</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-4">
+                                <h6 class="text-primary">Общие симптомы</h6>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="температура_повышена"
+                                        id="temp">
+                                    <label class="form-check-label" for="temp">Повышенная температура</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="аппетит_снижен"
+                                        id="appetite">
+                                    <label class="form-check-label" for="appetite">Сниженный аппетит</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="вялость" id="lethargy">
+                                    <label class="form-check-label" for="lethargy">Вялость, слабость</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="рвота" id="vomit">
+                                    <label class="form-check-label" for="vomit">Рвота</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="диарея" id="diarrhea">
+                                    <label class="form-check-label" for="diarrhea">Диарея</label>
+                                </div>
+                            </div>
+
+                            <div class="col-md-4">
+                                <h6 class="text-primary">Дыхательная система</h6>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="кашель" id="cough">
+                                    <label class="form-check-label" for="cough">Кашель</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="чихание" id="sneeze">
+                                    <label class="form-check-label" for="sneeze">Чихание</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="выделения_из_носа"
+                                        id="nose_discharge">
+                                    <label class="form-check-label" for="nose_discharge">Выделения из носа</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="затрудненное_дыхание"
+                                        id="breathing_difficulty">
+                                    <label class="form-check-label" for="breathing_difficulty">Затрудненное
+                                        дыхание</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="учащенное_дыхание"
+                                        id="rapid_breathing">
+                                    <label class="form-check-label" for="rapid_breathing">Учащенное дыхание</label>
+                                </div>
+                            </div>
+
+                            <div class="col-md-4">
+                                <h6 class="text-primary">Кожа и шерсть</h6>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="зуд" id="itching">
+                                    <label class="form-check-label" for="itching">Зуд</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="выпадение_шерсти"
+                                        id="hair_loss">
+                                    <label class="form-check-label" for="hair_loss">Выпадение шерсти</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="выделения_из_глаз"
+                                        id="eye_discharge">
+                                    <label class="form-check-label" for="eye_discharge">Выделения из глаз</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="бледность_слизистых"
+                                        id="pale_mucous">
+                                    <label class="form-check-label" for="pale_mucous">Бледность слизистых</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="желтушность" id="jaundice">
+                                    <label class="form-check-label" for="jaundice">Желтушность</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row mt-3">
+                            <div class="col-md-4">
+                                <h6 class="text-primary">Неврологические</h6>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="судороги" id="seizures">
+                                    <label class="form-check-label" for="seizures">Судороги</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="хромота" id="lameness">
+                                    <label class="form-check-label" for="lameness">Хромота</label>
+                                </div>
+                            </div>
+
+                            <div class="col-md-4">
+                                <h6 class="text-primary">Мочеполовая система</h6>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="частое_мочеиспускание"
+                                        id="frequent_urination">
+                                    <label class="form-check-label" for="frequent_urination">Частое
+                                        мочеиспускание</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="кровь_в_моче"
+                                        id="blood_urine">
+                                    <label class="form-check-label" for="blood_urine">Кровь в моче</label>
+                                </div>
+                            </div>
+
+                            <div class="col-md-4">
+                                <h6 class="text-primary">Пищеварительная система</h6>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="запор" id="constipation">
+                                    <label class="form-check-label" for="constipation">Запор</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="вздутие_живота"
+                                        id="bloating">
+                                    <label class="form-check-label" for="bloating">Вздутие живота</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="боль_в_животе"
+                                        id="abdominal_pain">
+                                    <label class="form-check-label" for="abdominal_pain">Боль в животе</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="слюнотечение" id="drooling">
+                                    <label class="form-check-label" for="drooling">Слюнотечение</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row mt-4">
+                            <div class="col-12 text-center">
+                                <button type="submit" class="btn btn-primary btn-lg">
+                                    <i class="bi bi-search"></i>
+                                    Диагностировать заболевание
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+
+                    <!-- Результаты диагностики -->
+                    <div id="results" class="mt-4" style="display: none;">
+                        <div class="card border-success">
+                            <div class="card-header bg-success text-white">
+                                <h5 class="mb-0">
+                                    <i class="bi bi-clipboard-check"></i>
+                                    Результаты диагностики
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div id="diagnosisResults"></div>
+                                <div class="alert alert-info mt-3">
+                                    <i class="bi bi-info-circle"></i>
+                                    <strong>Важно:</strong> Данная диагностика носит информационный характер.
+                                    Обязательно обратитесь к ветеринарному врачу для точной постановки диагноза и
+                                    назначения лечения.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.getElementById('diagnosisForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+
+        const animalType = document.getElementById('animalType').value;
+        const checkboxes = document.querySelectorAll('input[type="checkbox"]:checked');
+        const symptoms = Array.from(checkboxes).map(cb => cb.value);
+
+        if (!animalType) {
+            alert('Пожалуйста, выберите вид животного');
+            return;
+        }
+
+        if (symptoms.length === 0) {
+            alert('Пожалуйста, отметьте хотя бы один симптом');
+            return;
+        }
+
+        // Показываем индикатор загрузки
+        const submitBtn = document.querySelector('button[type="submit"]');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Анализируем...';
+        submitBtn.disabled = true;
+
+        // Отправляем запрос на сервер
+        const requestData = {
+            animal_type: animalType,
+            symptoms: symptoms
+        };
+
+        fetch('/diagnose', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(requestData)
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    displayResults(data.predictions);
+                } else {
+                    alert('Ошибка при диагностике: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Произошла ошибка при отправке запроса');
+            })
+            .finally(() => {
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+            });
+    });
+
+    function displayResults(predictions) {
+        const resultsDiv = document.getElementById('diagnosisResults');
+        const resultsContainer = document.getElementById('results');
+
+        let html = '<h6>Возможные заболевания (по убыванию вероятности):</h6>';
+        html += '<div class="list-group">';
+
+        predictions.forEach((prediction, index) => {
+            const disease = prediction[0];
+            const probability = prediction[1];
+            const percentage = (probability * 100).toFixed(1);
+
+            // Определяем цвет карточки в зависимости от вероятности
+            let cardClass = 'list-group-item';
+            if (probability > 0.7) {
+                cardClass += ' list-group-item-danger';
+            } else if (probability > 0.4) {
+                cardClass += ' list-group-item-warning';
+            } else {
+                cardClass += ' list-group-item-info';
+            }
+
+            html += `
+            <div class="${cardClass}">
+                <div class="d-flex w-100 justify-content-between">
+                    <h6 class="mb-1">${index + 1}. ${disease.replace('_', ' ').toUpperCase()}</h6>
+                    <small>${percentage}%</small>
+                </div>
+                <div class="progress mt-2" style="height: 8px;">
+                    <div class="progress-bar" role="progressbar" style="width: ${percentage}%"></div>
+                </div>
+            </div>
+        `;
+        });
+
+        html += '</div>';
+        resultsDiv.innerHTML = html;
+        resultsContainer.style.display = 'block';
+
+        // Прокручиваем к результатам
+        resultsContainer.scrollIntoView({ behavior: 'smooth' });
+    }
+</script>
+{% endblock %}

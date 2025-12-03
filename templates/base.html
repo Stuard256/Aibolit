@@ -37,7 +37,196 @@
         padding: 0.25rem 0.5rem;
       }
     }
+
+    /* === ТЁМНАЯ ТЕМА === */
+    body {
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+
+    body.dark-theme {
+      background-color: #1a1a1a;
+      color: #e0e0e0;
+    }
+
+    /* Навигация в тёмной теме */
+    body.dark-theme .navbar-light {
+      background-color: #2d2d2d !important;
+    }
+
+    body.dark-theme .navbar-brand,
+    body.dark-theme .nav-link {
+      color: #e0e0e0 !important;
+    }
+
+    body.dark-theme .navbar-toggler-icon {
+      filter: invert(1);
+    }
+
+    /* Карточки в тёмной теме */
+    body.dark-theme .card {
+      background-color: #2d2d2d;
+      color: #e0e0e0;
+      border-color: #404040;
+    }
+
+    body.dark-theme .card-header {
+      background-color: #3a3a3a;
+      border-color: #404040;
+    }
+
+    body.dark-theme .bg-light,
+    body.dark-theme .bg-white {
+      background-color: #2d2d2d !important;
+    }
+
+    /* Таблицы в тёмной теме */
+    body.dark-theme .table {
+      color: #e0e0e0;
+    }
+
+    body.dark-theme .table-striped tbody tr:nth-of-type(odd) {
+      background-color: #2a2a2a;
+    }
+
+    body.dark-theme .table-hover tbody tr:hover {
+      background-color: #353535;
+    }
+
+    body.dark-theme .table thead th {
+      background-color: #3a3a3a;
+      border-color: #404040;
+    }
+
+    body.dark-theme .table td,
+    body.dark-theme .table th {
+      border-color: #404040;
+    }
+
+    /* Формы в тёмной теме */
+    body.dark-theme .form-control,
+    body.dark-theme .form-select {
+      background-color: #2d2d2d;
+      color: #e0e0e0;
+      border-color: #404040;
+    }
+
+    body.dark-theme .form-control:focus,
+    body.dark-theme .form-select:focus {
+      background-color: #353535;
+      color: #e0e0e0;
+      border-color: #5a5a5a;
+    }
+
+    /* Алерты в тёмной теме */
+    body.dark-theme .alert {
+      background-color: #2d2d2d;
+      border-color: #404040;
+    }
+
+    body.dark-theme .alert-success {
+      background-color: #1e4620;
+      color: #a8d5a8;
+      border-color: #2d6930;
+    }
+
+    body.dark-theme .alert-danger {
+      background-color: #4a1f1f;
+      color: #f0b0b0;
+      border-color: #6d3030;
+    }
+
+    body.dark-theme .alert-info {
+      background-color: #1f3a4a;
+      color: #a8d0e8;
+      border-color: #305a6d;
+    }
+
+    body.dark-theme .alert-warning {
+      background-color: #4a4020;
+      color: #f0d8a8;
+      border-color: #6d6030;
+    }
+
+    /* Кнопки в тёмной теме */
+    body.dark-theme .btn-outline-primary:hover,
+    body.dark-theme .btn-outline-secondary:hover,
+    body.dark-theme .btn-outline-info:hover,
+    body.dark-theme .btn-outline-success:hover,
+    body.dark-theme .btn-outline-dark:hover {
+      background-color: #404040;
+      border-color: #5a5a5a;
+    }
+
+    /* Футер в тёмной теме */
+    body.dark-theme footer {
+      background-color: #2d2d2d !important;
+      color: #e0e0e0;
+      border-top: 1px solid #404040;
+    }
+
+    /* Текст в тёмной теме */
+    body.dark-theme .text-muted {
+      color: #a0a0a0 !important;
+    }
+
+    body.dark-theme .text-dark {
+      color: #e0e0e0 !important;
+    }
+
+    /* Модальные окна в тёмной теме */
+    body.dark-theme .modal-content {
+      background-color: #2d2d2d;
+      color: #e0e0e0;
+    }
+
+    body.dark-theme .modal-header {
+      border-bottom-color: #404040;
+    }
+
+    body.dark-theme .modal-footer {
+      border-top-color: #404040;
+    }
+
+    body.dark-theme .close {
+      color: #e0e0e0;
+    }
+
+    /* Списки в тёмной теме */
+    body.dark-theme .list-group-item {
+      background-color: #2d2d2d;
+      color: #e0e0e0;
+      border-color: #404040;
+    }
+
+    body.dark-theme .list-group-item:hover {
+      background-color: #353535;
+    }
+
+    /* Бейджи в тёмной теме */
+    body.dark-theme .badge {
+      background-color: #404040;
+      color: #e0e0e0;
+    }
   </style>
+  
+  <!-- Скрипт для автоматического применения темы -->
+  <script>
+    // Применяем тему до загрузки страницы, чтобы избежать мигания
+    (function() {
+      const savedTheme = localStorage.getItem('theme') || 'light';
+      if (savedTheme === 'dark') {
+        document.documentElement.classList.add('dark-theme');
+        // Добавляем класс body при загрузке
+        if (document.body) {
+          document.body.classList.add('dark-theme');
+        } else {
+          document.addEventListener('DOMContentLoaded', function() {
+            document.body.classList.add('dark-theme');
+          });
+        }
+      }
+    })();
+  </script>
 </head>
 
 <body class="d-flex flex-column min-vh-100">
@@ -68,8 +257,8 @@
             </li>
             <li class="nav-item">
               <a class="nav-link btn btn-sm btn-outline-secondary mx-1 mb-1" href="{{ url_for('vaccinations') }}">
-                <i class="bi bi-eyedropper"></i>
-                <span class="d-none d-lg-inline ms-1">Вакцинации</span>
+                <i class="bi bi-file-earmark-text"></i>
+                <span class="d-none d-lg-inline ms-1">Отчёты</span>
               </a>
             </li>
             <li class="nav-item">
@@ -96,6 +285,18 @@
               <a class="nav-link btn btn-sm btn-outline-info mx-1 mb-1" href="{{ url_for('statistics') }}">
                 <i class="bi bi-graph-up"></i>
                 <span class="d-none d-lg-inline ms-1">Статистика</span>
+              </a>
+            </li>
+            <li class="nav-item" id="diagnosisNavItem" style="display: none;">
+              <a class="nav-link btn btn-sm btn-outline-success mx-1 mb-1" href="{{ url_for('diagnosis_page') }}">
+                <i class="bi bi-heart-pulse"></i>
+                <span class="d-none d-lg-inline ms-1">Диагностика</span>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link btn btn-sm btn-outline-dark mx-1 mb-1" href="{{ url_for('settings') }}">
+                <i class="bi bi-gear-fill"></i>
+                <span class="d-none d-lg-inline ms-1">Настройки</span>
               </a>
             </li>
           </ul>
@@ -128,6 +329,36 @@
   </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- Скрипт для управления видимостью вкладки ML-диагностики -->
+  <script>
+    // Функция для получения настройки ML из localStorage
+    function getMLEnabled() {
+      const saved = localStorage.getItem('mlEnabled');
+      return saved === 'true'; // По умолчанию false
+    }
+
+    // Функция для обновления видимости вкладки диагностики
+    function updateDiagnosisTabVisibility() {
+      const diagnosisNavItem = document.getElementById('diagnosisNavItem');
+      if (diagnosisNavItem) {
+        const mlEnabled = getMLEnabled();
+        if (mlEnabled) {
+          diagnosisNavItem.style.display = '';
+        } else {
+          diagnosisNavItem.style.display = 'none';
+        }
+      }
+    }
+
+    // Применяем настройку при загрузке страницы
+    document.addEventListener('DOMContentLoaded', function() {
+      updateDiagnosisTabVisibility();
+    });
+
+    // Экспортируем функцию для использования в других скриптах
+    window.updateDiagnosisTabVisibility = updateDiagnosisTabVisibility;
+  </script>
 
   {% block scripts %}{% endblock %}
 </body>

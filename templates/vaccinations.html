@@ -1,201 +1,212 @@
 {% extends "base.html" %}
-
-{% block title %}Вакцинации{% endblock %}
+{% block title %}Отчёты{% endblock %}
 
 {% block content %}
-<div class="container py-5">
-    <div class="text-center mb-5">
-        <div class="icon-circle bg-primary mb-4 mx-auto">
-            <i class="bi bi-eyedropper text-white" style="font-size: 2rem;"></i>
+<div class="container mt-3">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="text-center mb-4">
+                <i class="bi bi-file-earmark-text"></i> Отчёты
+            </h1>
         </div>
-        <h1 class="display-5 fw-bold">Управление вакцинациями</h1>
-        <p class="lead text-muted">Выберите действие для работы с вакцинациями</p>
     </div>
 
-    <div class="row justify-content-center g-4">
-        <div class="col-md-5">
-            <div class="card card-action h-100">
-                <div class="card-body text-center p-4">
-                    <div class="icon-circle bg-success mb-3 mx-auto">
-                        <i class="bi bi-plus-lg text-white"></i>
+    <!-- Карточки с типами отчётов -->
+    <div class="row g-4">
+        <!-- Отчёт по вакцинациям от бешенства -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body text-center">
+                    <div class="mb-3">
+                        <i class="bi bi-shield-check text-primary" style="font-size: 3rem;"></i>
                     </div>
-                    <h3 class="h4">Добавить вакцинацию</h3>
-                    <p class="text-muted">Зарегистрировать новую вакцинацию животного</p>
-                    <a href="{{ url_for('new_vaccination') }}" class="stretched-link"></a>
+                    <h5 class="card-title">Отчёт по вакцинациям от бешенства</h5>
+                    <p class="card-text text-muted">
+                        Генерация отчёта по вакцинациям от бешенства за выбранный период
+                    </p>
+                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#rabiesReportModal">
+                        <i class="bi bi-file-earmark-pdf"></i> Создать отчёт
+                    </button>
                 </div>
-                <div class="card-footer bg-transparent border-0 py-3">
-                    <a href="{{ url_for('new_vaccination') }}" class="btn btn-success w-100">
-                        <i class="bi bi-plus-lg me-2"></i> Добавить
+            </div>
+        </div>
+
+        <!-- Отчёт по всем вакцинациям -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body text-center">
+                    <div class="mb-3">
+                        <i class="bi bi-eyedropper text-success" style="font-size: 3rem;"></i>
+                    </div>
+                    <h5 class="card-title">Отчёт по всем вакцинациям</h5>
+                    <p class="card-text text-muted">
+                        Экспорт контактных данных владельцев для напоминаний о вакцинациях
+                    </p>
+                    <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#allVaccinationsModal">
+                        <i class="bi bi-download"></i> Экспорт данных
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Статистический отчёт -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body text-center">
+                    <div class="mb-3">
+                        <i class="bi bi-graph-up text-info" style="font-size: 3rem;"></i>
+                    </div>
+                    <h5 class="card-title">Статистический отчёт</h5>
+                    <p class="card-text text-muted">
+                        Переход к детальной статистике клиники с графиками и аналитикой
+                    </p>
+                    <a href="{{ url_for('statistics') }}" class="btn btn-info">
+                        <i class="bi bi-bar-chart"></i> Открыть статистику
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Дополнительные инструменты -->
+    <div class="row mt-5">
+        <div class="col-12">
+            <h3 class="mb-3">
+                <i class="bi bi-tools"></i> Дополнительные инструменты
+            </h3>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Просмотр всех вакцинаций -->
+        <div class="col-md-6">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="bi bi-list-ul"></i> Просмотр всех вакцинаций
+                    </h5>
+                    <p class="card-text">
+                        Просмотр и поиск по всем записям вакцинаций в базе данных
+                    </p>
+                    <a href="{{ url_for('vaccinations_list') }}" class="btn btn-outline-primary">
+                        <i class="bi bi-search"></i> Просмотреть
                     </a>
                 </div>
             </div>
         </div>
 
-        <div class="col-md-5">
-            <div class="card card-action h-100">
-                <div class="card-body text-center p-4">
-                    <div class="icon-circle bg-primary mb-3 mx-auto">
-                        <i class="bi bi-file-earmark-text text-white"></i>
-                    </div>
-                    <h3 class="h4">Сформировать отчёт</h3>
-                    <p class="text-muted">Создать отчёт по проведённым вакцинациям</p>
+        <!-- Управление назначениями -->
+        <div class="col-md-6">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="bi bi-clipboard2-pulse"></i> Управление назначениями
+                    </h5>
+                    <p class="card-text">
+                        Добавление, редактирование и управление медицинскими назначениями
+                    </p>
+                    <a href="{{ url_for('list_treatments') }}" class="btn btn-outline-primary">
+                        <i class="bi bi-gear"></i> Управлять
+                    </a>
                 </div>
-                <div class="card-footer bg-transparent border-0 py-3">
-                    <button class="btn btn-primary w-100" data-bs-toggle="modal" data-bs-target="#reportModal">
-                        <i class="bi bi-file-earmark-text me-2"></i> Отчёт
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно для отчёта по бешенству -->
+<div class="modal fade" id="rabiesReportModal" tabindex="-1" aria-labelledby="rabiesReportModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="rabiesReportModalLabel">
+                    <i class="bi bi-shield-check"></i> Отчёт по вакцинациям от бешенства
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="{{ url_for('generate_report') }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="start_date" class="form-label">Дата начала</label>
+                        <input type="date" class="form-control" id="start_date" name="start_date" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="end_date" class="form-label">Дата окончания</label>
+                        <input type="date" class="form-control" id="end_date" name="end_date" required>
+                    </div>
+                    <input type="hidden" name="report_type" value="rabies">
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i>
+                        <strong>Информация:</strong> Отчёт будет сгенерирован в формате PDF и автоматически загружен.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-file-earmark-pdf"></i> Создать отчёт
                     </button>
                 </div>
-            </div>
+            </form>
         </div>
     </div>
 </div>
 
-<!-- Модальное окно для отчёта -->
-<div class="modal fade" id="reportModal" tabindex="-1" aria-labelledby="reportModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
+<!-- Модальное окно для экспорта всех вакцинаций -->
+<div class="modal fade" id="allVaccinationsModal" tabindex="-1" aria-labelledby="allVaccinationsModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog">
         <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title" id="reportModalLabel"><i class="bi bi-file-earmark-text me-2"></i>Формирование
-                    отчёта</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
-                    aria-label="Close"></button>
+            <div class="modal-header">
+                <h5 class="modal-title" id="allVaccinationsModalLabel">
+                    <i class="bi bi-eyedropper"></i> Экспорт данных по вакцинациям
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body">
-                <form id="reportForm" method="POST" enctype="application/x-www-form-urlencoded"
-                    action="{{ url_for('generate_report') }}">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label for="reportType" class="form-label">Тип отчёта</label>
-                            <select class="form-select" id="reportType" name="report_type" required>
-                                <option value="rabies">Отчёт по бешенству</option>
-                                <option value="all">Отчёт по всем вакцинациям</option>
-                            </select>
-                        </div>
-
-                        <div class="col-md-6">
-                            <label for="vaccinationType" class="form-label">Тип вакцинации</label>
-                            <select class="form-select" id="vaccinationType" name="vaccination_type">
-                                <option value="">Все типы</option>
-                                <option value="Бешенство">Бешенство</option>
-                                <option value="Комплексная">Комплексная</option>
-                                <option value="Другое">Другое</option>
-                            </select>
-                        </div>
-
-                        <div class="col-md-6">
-                            <label for="startDate" class="form-label">Дата начала</label>
-                            <input type="date" class="form-control" id="startDate" name="start_date" required>
-                        </div>
-
-                        <div class="col-md-6">
-                            <label for="endDate" class="form-label">Дата окончания</label>
-                            <input type="date" class="form-control" id="endDate" name="end_date" required>
+            <form method="post" action="{{ url_for('generate_report') }}">
+                <div class="modal-body">
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        <strong>Внимание:</strong> Будет создан ZIP-архив с контактными данными владельцев
+                        за период 11 месяцев назад от текущей даты.
+                    </div>
+                    <input type="hidden" name="report_type" value="all">
+                    <div class="mb-3">
+                        <label class="form-label">Период экспорта</label>
+                        <div class="form-control-plaintext">
+                            <i class="bi bi-calendar"></i>
+                            Автоматически: 11 месяцев назад от текущей даты
                         </div>
                     </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
-                    <i class="bi bi-x-lg me-1"></i> Отмена
-                </button>
-                <button type="submit" form="reportForm" class="btn btn-primary">
-                    <i class="bi bi-printer me-1"></i> Сформировать
-                </button>
-            </div>
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i>
+                        <strong>Содержимое архива:</strong>
+                        <ul class="mb-0 mt-2">
+                            <li>correct_phones.txt - корректные номера телефонов</li>
+                            <li>incorrect_phones.txt - некорректные номера телефонов</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-download"></i> Экспортировать
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
-
-<style>
-    .icon-circle {
-        width: 80px;
-        height: 80px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-
-    .card-action {
-        border: none;
-        border-radius: 12px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
-        transition: transform 0.3s ease, box-shadow 0.3s ease;
-    }
-
-    .card-action:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
-    }
-
-    .btn {
-        border-radius: 8px;
-        padding: 0.5rem 1.25rem;
-        font-weight: 500;
-        transition: all 0.2s;
-    }
-
-    .btn-primary {
-        background-color: #0d6efd;
-        border-color: #0d6efd;
-    }
-
-    .btn-success {
-        background-color: #198754;
-        border-color: #198754;
-    }
-
-    .btn:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    }
-
-    .modal-content {
-        border-radius: 12px;
-        overflow: hidden;
-        border: none;
-    }
-
-    .form-control,
-    .form-select {
-        border-radius: 8px;
-        padding: 0.5rem 1rem;
-        border: 1px solid #e0e0e0;
-    }
-</style>
 
 <script>
     document.addEventListener('DOMContentLoaded', function () {
-        // Установка дат по умолчанию (текущий месяц)
-        const setDefaultDates = () => {
-            const now = new Date();
-            const firstDay = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-            const lastDay = new Date(now.getFullYear(), now.getMonth(), 0);
+        // Устанавливаем даты по умолчанию для отчёта по бешенству
+        const today = new Date();
+        const oneMonthAgo = new Date(today.getFullYear(), today.getMonth() - 1, today.getDate());
 
-            // Форматирование даты в формат YYYY-MM-DD
-            const formatDate = (date) => {
-                const d = new Date(date);
-                return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-            };
-
-            document.getElementById('startDate').value = formatDate(firstDay);
-            document.getElementById('endDate').value = formatDate(lastDay);
-        };
-
-        setDefaultDates();
-
-        // Валидация формы отчёта
-        document.getElementById('reportForm').addEventListener('submit', function (e) {
-            const startDate = new Date(document.getElementById('startDate').value);
-            const endDate = new Date(document.getElementById('endDate').value);
-
-            if (startDate > endDate) {
-                e.preventDefault();
-                alert('Дата начала должна быть раньше даты окончания');
-                return false;
-            }
-        });
+        document.getElementById('start_date').value = oneMonthAgo.toISOString().split('T')[0];
+        document.getElementById('end_date').value = today.toISOString().split('T')[0];
     });
 </script>
+
 {% endblock %}

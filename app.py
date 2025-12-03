@@ -1,13 +1,29 @@
+#coding=utf-8
 # Стандартные библиотеки
 import io
+import locale
 import logging
 import os
 import re
 import shutil
+import sys
 from datetime import date, datetime, timedelta
 
-# Сторонние зависимости
+# Установка UTF-8 кодировки для консоли Windows
+if sys.platform == 'win32':
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+        sys.stderr.reconfigure(encoding='utf-8')
+    except AttributeError:
+        # Для старых версий Python
+        import codecs
+        sys.stdout = codecs.getwriter('utf-8')(sys.stdout.buffer, 'strict')
+        sys.stderr = codecs.getwriter('utf-8')(sys.stderr.buffer, 'strict')
+
+# Сторонние зависимости 
 import click
+import joblib
+import numpy as np
 import pdfkit
 from apscheduler.schedulers.background import BackgroundScheduler
 from dateutil.relativedelta import relativedelta
@@ -27,8 +43,20 @@ logging.basicConfig()
 logging.getLogger('apscheduler').setLevel(logging.DEBUG)
 logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
 
-
-config = pdfkit.configuration(wkhtmltopdf=r'C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe')
+# Конфигурация для PDF генерации (опционально)
+config = None
+try:
+    wkhtmltopdf_path = r'C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe'
+    if os.path.exists(wkhtmltopdf_path):
+        config = pdfkit.configuration(wkhtmltopdf=wkhtmltopdf_path)
+        print("[OK] wkhtmltopdf найден - генерация PDF отчётов доступна")
+    else:
+        print("[ВНИМАНИЕ] wkhtmltopdf не найден - генерация PDF отчетов недоступна")
+        print("           Скачайте с: https://wkhtmltopdf.org/downloads.html")
+except Exception as e:
+    error_msg = "[ВНИМАНИЕ] Ошибка инициализации wkhtmltopdf: {}".format(e)
+    print(error_msg)
+    print("           Генерация PDF отчетов будет недоступна")
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///vet_clinic.db'
@@ -38,6 +66,53 @@ app.secret_key = 'your_secret_key'  # Замените на надёжное з�
 db.init_app(app)  # Инициализируем db с Flask
 csrf = CSRFProtect(app)
 
+# Глобальная переменная для ML модели
+ml_model = None
+ml_enabled = False  # По умолчанию ML выключена
+
+def load_ml_model():
+    """Загрузка ML модели для диагностики заболеваний"""
+    global ml_model
+    try:
+        # Пробуем загрузить взвешенную модель
+        if os.path.exists('ml/models/weighted_animal_disease_model.pkl'):
+            print("DEBUG: Загружаем взвешенную ML модель...")
+            model_data = joblib.load('ml/models/weighted_animal_disease_model.pkl')
+            ml_model = model_data
+            print("DEBUG: Взвешенная модель загружена")
+            print("[OK] ML модель успешно загружена")
+            return True
+        elif os.path.exists('ml/models/improved_animal_disease_model.pkl'):
+            print("DEBUG: Загружаем улучшенную ML модель...")
+            model_data = joblib.load('ml/models/improved_animal_disease_model.pkl')
+            ml_model = model_data
+            print("DEBUG: Улучшенная модель загружена")
+            print("[OK] ML модель успешно загружена")
+            return True
+        elif os.path.exists('ml/models/animal_disease_model.pkl'):
+            print("DEBUG: Загружаем стандартную ML модель...")
+            model_data = joblib.load('ml/models/animal_disease_model.pkl')
+            
+            # Проверяем структуру загруженных данных
+            if isinstance(model_data, dict):
+                ml_model = model_data
+                print("DEBUG: Модель загружена как словарь")
+            else:
+                # Если это старая версия модели
+                ml_model = model_data
+                print("DEBUG: Модель загружена как объект")
+            
+            print("[OK] ML модель успешно загружена")
+            return True
+        else:
+            print("[ВНИМАНИЕ] ML модель не найдена. Создайте модель с помощью ml/train_model.py")
+            return False
+    except Exception as e:
+        error_msg = "[ВНИМАНИЕ] Ошибка при загрузке ML модели: {}".format(e)
+        print(error_msg)
+        import traceback
+        traceback.print_exc()
+        return False
 
 def init_scheduler():
     scheduler = BackgroundScheduler()
@@ -59,7 +134,7 @@ def create_backup():
             return {'status': 'error', 'message': 'Database file not found'}
         
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        backup_file = os.path.join(backup_dir, f'vet_clinic_backup_{timestamp}.db')
+        backup_file = os.path.join(backup_dir, 'vet_clinic_backup_{}.db'.format(timestamp))
         
         shutil.copy2(db_file, backup_file)
         
@@ -68,10 +143,10 @@ def create_backup():
         for old_backup in backups[10:]:
             os.remove(os.path.join(backup_dir, old_backup))
             
-        app.logger.info(f"Backup created: {backup_file}")
-        return {'status': 'success', 'message': f'Backup created: {backup_file}'}
+        app.logger.info("Backup created: {}".format(backup_file))
+        return {'status': 'success', 'message': 'Backup created: {}'.format(backup_file)}
     except Exception as e:
-        app.logger.error(f"Backup failed: {str(e)}")
+        app.logger.error("Backup failed: {}".format(str(e)))
         return {'status': 'error', 'message': str(e)}
 
 def normalize_phone(phone_str):
@@ -153,6 +228,11 @@ def update_appointment_treatments(appointment_id):
             db.session.add(at)
         
         db.session.commit()
+        
+        # Создаем вакцинации для вакцин
+        appointment = Appointment.query.get(appointment_id)
+        create_vaccinations_for_appointment(appointment)
+        
         return jsonify({'success': True})
     except Exception as e:
         db.session.rollback()
@@ -263,7 +343,7 @@ def edit_treatment(treatment_id):
             return redirect(url_for('list_treatments'))
         except Exception as e:
             db.session.rollback()
-            flash(f'Ошибка при обновлении назначения: {str(e)}', 'danger')
+            flash('Ошибка при обновлении назначения: {}'.format(str(e)), 'danger')
     
     return render_template('edit_treatment.html', form=form, treatment=treatment)
 
@@ -278,7 +358,7 @@ def delete_treatment_id(treatment_id):
         flash('Назначение успешно удалено!', 'success')
     except Exception as e:
         db.session.rollback()
-        flash(f'Ошибка при удалении назначения: {str(e)}', 'danger')
+        flash('Ошибка при удалении назначения: {}'.format(str(e)), 'danger')
     
     return redirect(url_for('list_treatments'))
 
@@ -372,14 +452,14 @@ def treatment_calculator():
                     try:
                         create_vaccinations_for_appointment(appointment)
                     except Exception as vaccine_error:
-                        flash(f'Ошибка при создании вакцинаций: {str(vaccine_error)}', 'warning')
+                        flash('Ошибка при создании вакцинаций: {}'.format(str(vaccine_error)), 'warning')
 
                 flash('Назначения успешно сохранены', 'success')
                 return redirect(url_for('appointment_details', appointment_id=appointment.id))
 
             except Exception as e:
                 db.session.rollback()
-                flash(f'Ошибка при сохранении: {str(e)}', 'error')
+                flash('Ошибка при сохранении: {}'.format(str(e)), 'error')
                 return redirect(request.url)
     return render_template('treatment_calculator.html', 
                          form=form,
@@ -395,11 +475,45 @@ def create_vaccinations_for_appointment(appointment):
         for treatment_rel in appointment.treatments:
             treatment = treatment_rel.treatment
             
-            if treatment.category == 'vaccines':
-                Vaccination.create_from_treatment(
-                    appointment=appointment,
-                    treatment_rel=treatment_rel
+            if treatment.category == 'vaccines' and treatment.vaccine_types:
+                # Создаем отдельную запись для каждого типа вакцины
+                for vaccine_type in treatment.vaccine_types:
+                    vaccination = Vaccination(
+                        vaccine_name="{} ({})".format(treatment.name, vaccine_type),
+                        vaccination_type=vaccine_type,
+                        date_administered=datetime.strptime(appointment.appointment_date, '%Y-%m-%d').date() if isinstance(appointment.appointment_date, str) else appointment.appointment_date,
+                        next_due_date=(datetime.strptime(appointment.appointment_date, '%Y-%m-%d').date() + relativedelta(years=1)) if isinstance(appointment.appointment_date, str) else appointment.appointment_date + relativedelta(years=1),
+                        pet_id=appointment.pet_id,
+                        owner_id=appointment.owner_id,
+                        dose_ml=treatment_rel.quantity,
+                        previous_vaccination_date=get_previous_vaccination_date(appointment.pet, treatment.name, vaccine_type),
+                        owner_name=appointment.pet.owner.name,
+                        owner_address=appointment.pet.owner.address,
+                        pet_species=appointment.pet.species,
+                        pet_breed=appointment.pet.breed,
+                        pet_card_number=appointment.pet.card_number,
+                        pet_age=appointment.pet.pet_age()
+                    )
+                    db.session.add(vaccination)
+            elif treatment.category == 'vaccines':
+                # Если нет типов вакцин, создаем одну запись
+                vaccination = Vaccination(
+                    vaccine_name=treatment.name,
+                    vaccination_type='Общая',
+                    date_administered=datetime.strptime(appointment.appointment_date, '%Y-%m-%d').date() if isinstance(appointment.appointment_date, str) else appointment.appointment_date,
+                    next_due_date=(datetime.strptime(appointment.appointment_date, '%Y-%m-%d').date() + relativedelta(years=1)) if isinstance(appointment.appointment_date, str) else appointment.appointment_date + relativedelta(years=1),
+                    pet_id=appointment.pet_id,
+                    owner_id=appointment.owner_id,
+                    dose_ml=treatment_rel.quantity,
+                    previous_vaccination_date=get_previous_vaccination_date(appointment.pet, treatment.name, 'Общая'),
+                    owner_name=appointment.pet.owner.name,
+                    owner_address=appointment.pet.owner.address,
+                    pet_species=appointment.pet.species,
+                    pet_breed=appointment.pet.breed,
+                    pet_card_number=appointment.pet.card_number,
+                    pet_age=appointment.pet.pet_age()
                 )
+                db.session.add(vaccination)
         
         db.session.commit()
     except Exception as e:
@@ -410,7 +524,7 @@ def create_vaccinations_for_appointment(appointment):
 def treatment_search():
     term = request.args.get('term', '')
     treatments = Treatment.query.filter(
-        Treatment.name.ilike(f'%{term}%')
+        Treatment.name.ilike('%{}%'.format(term))
     ).limit(10).all()
     return jsonify([{
         'id': t.id,
@@ -424,8 +538,8 @@ def treatment_search():
 def pet_search():
     term = request.args.get('term', '')
     pets = Pet.query.join(Owner).filter(
-        Pet.name.ilike(f'%{term}%') | 
-        Pet.card_number.ilike(f'%{term}%')
+        Pet.name.ilike('%{}%'.format(term)) | 
+        Pet.card_number.ilike('%{}%'.format(term))
     ).limit(10).all()
     return jsonify([{
         'id': p.id,
@@ -479,14 +593,14 @@ def save_treatments():
             if treatment_obj.category == 'vaccines' and treatment_obj.vaccine_types:
                 for vaccine_type in treatment_obj.vaccine_types:
                     vaccination = Vaccination(
-                        vaccine_name=f"{treatment_obj.name} ({vaccine_type})",
-                        vaccine_type=vaccine_type,
+                        vaccine_name="{} ({})".format(treatment_obj.name, vaccine_type),
+                        vaccination_type=vaccine_type,
                         date_administered=appointment.appointment_date,
                         next_due_date=appointment.appointment_date + relativedelta(years=1),
                         pet_id=pet.id,
                         owner_id=pet.owner_id,
                         dose_ml=at.quantity,
-                        previous_vaccination_date=get_previous_vaccination_date(pet, vaccine_type),
+                        previous_vaccination_date=get_previous_vaccination_date(pet, treatment_obj.name, vaccine_type),
                         owner_name=pet.owner.name,
                         owner_address=pet.owner.address,
                         pet_species=pet.species,
@@ -495,6 +609,25 @@ def save_treatments():
                         pet_age=pet.pet_age()
                     )
                     db.session.add(vaccination)
+            elif treatment_obj.category == 'vaccines':
+                # Если нет типов вакцин, создаем одну запись
+                vaccination = Vaccination(
+                    vaccine_name=treatment_obj.name,
+                    vaccination_type='Общая',
+                    date_administered=appointment.appointment_date,
+                    next_due_date=appointment.appointment_date + relativedelta(years=1),
+                    pet_id=pet.id,
+                    owner_id=pet.owner_id,
+                    dose_ml=at.quantity,
+                    previous_vaccination_date=get_previous_vaccination_date(pet, treatment_obj.name, 'Общая'),
+                    owner_name=pet.owner.name,
+                    owner_address=pet.owner.address,
+                    pet_species=pet.species,
+                    pet_breed=pet.breed,
+                    pet_card_number=pet.card_number,
+                    pet_age=pet.pet_age()
+                )
+                db.session.add(vaccination)
 
         db.session.commit()
         return jsonify({'success': True, 'appointment_id': appointment.id})
@@ -504,10 +637,10 @@ def save_treatments():
         return jsonify({'error': str(e)}), 500
 
 
-def get_previous_vaccination_date(pet, vaccine_name):
+def get_previous_vaccination_date(pet, vaccine_name, vaccine_type):
     last_vaccination = Vaccination.query.filter_by(
         pet_id=pet.id,
-        vaccine_name=vaccine_name
+        vaccination_type=vaccine_type
     ).order_by(Vaccination.date_administered.desc()).first()
     
     return last_vaccination.date_administered if last_vaccination else None
@@ -552,12 +685,12 @@ def add_treatment():
             db.session.commit()
             
             flash('Назначение успешно добавлено!', 'success')
-            app.logger.info(f"Добавлено новое назначение: {treatment.name} (ID: {treatment.id})")
+            app.logger.info("Добавлено новое назначение: {} (ID: {})".format(treatment.name, treatment.id))
             return redirect(url_for('list_treatments'))
             
         except Exception as e:
             db.session.rollback()
-            error_msg = f'Ошибка при добавлении назначения: {str(e)}'
+            error_msg = 'Ошибка при добавлении назначения: {}'.format(str(e))
             flash(error_msg, 'danger')
             app.logger.error(error_msg, exc_info=True)
     
@@ -621,7 +754,7 @@ def generate_report():
                 'breed': pet.breed,
                 'age': age_str,  # Формат "X г Y м Z д" без нулевых значений
                 'prev_vaccination': prev_vacc.date_administered.strftime('%d.%m.%Y') if prev_vacc else '',
-                'dose': f"{vacc.dose_ml or 1.0}"
+                'dose': "{}".format(vacc.dose_ml or 1.0)
             })
         # Формируем HTML отчета с альбомной ориентацией
         report_html = render_template(
@@ -630,6 +763,11 @@ def generate_report():
             start_date=start_date.strftime('%d.%m.%Y'),
             end_date=end_date.strftime('%d.%m.%Y')
         )
+        
+        # Проверяем, доступна ли генерация PDF
+        if config is None:
+            flash('Генерация PDF недоступна. Установите wkhtmltopdf с https://wkhtmltopdf.org/downloads.html', 'error')
+            return redirect(url_for('vaccinations'))
         
         # Параметры для PDF (альбомная ориентация)
         options = {
@@ -647,7 +785,7 @@ def generate_report():
         
         response = make_response(pdf)
         response.headers['Content-Type'] = 'application/pdf'
-        response.headers['Content-Disposition'] = f'inline; filename=rabies_report_{start_date.date()}_{end_date.date()}.pdf'
+        response.headers['Content-Disposition'] = 'inline; filename=rabies_report_{}_{}.pdf'.format(start_date.date(), end_date.date())
         return response
     
     elif report_type == 'all':
@@ -707,7 +845,7 @@ def generate_report():
             buffer,
             mimetype='application/zip',
             as_attachment=True,
-            download_name=f'vaccination_phones_{target_date:%m_%Y}.zip'
+            download_name='vaccination_phones_{}.zip'.format(target_date.strftime('%m_%Y'))
         )
     else:
         flash('Неизвестный тип отчета', 'error')
@@ -715,6 +853,12 @@ def generate_report():
 
 @app.route('/vaccinations')
 def vaccinations():
+    """Страница отчётов"""
+    return render_template('vaccinations.html')
+
+@app.route('/vaccinations/list')
+def vaccinations_list():
+    """Просмотр всех вакцинаций"""
     page = request.args.get('page', 1, type=int)
     search = request.args.get('search', '')
     
@@ -722,13 +866,13 @@ def vaccinations():
     
     if search:
         query = query.filter(
-            Vaccination.vaccine_name.ilike(f'%{search}%') |
-            Vaccination.owner_name.ilike(f'%{search}%')
+            Vaccination.vaccine_name.ilike('%{}%'.format(search)) |
+            Vaccination.owner_name.ilike('%{}%'.format(search))
         )
     
-    vaccinations = query.order_by(Vaccination.date_administered.desc()).paginate(page=page, per_page=10)
+    vaccinations = query.order_by(Vaccination.date_administered.desc()).paginate(page=page, per_page=20)
     
-    return render_template('vaccinations.html', vaccinations=vaccinations)
+    return render_template('vaccinations_list.html', vaccinations=vaccinations)
 
 @app.route('/vaccination/new', methods=['GET', 'POST'])
 def new_vaccination():
@@ -774,7 +918,7 @@ def new_vaccination():
             
         except Exception as e:
             db.session.rollback()
-            flash(f'Ошибка при добавлении вакцинации: {str(e)}', 'danger')
+            flash('Ошибка при добавлении вакцинации: {}'.format(str(e)), 'danger')
             return redirect(request.url)
     else:
         # Обрабатываем GET-параметры
@@ -820,11 +964,11 @@ def edit_vaccination(id):
             
         except ValueError as e:
             db.session.rollback()
-            flash(f'Ошибка формата даты или числа: {str(e)}', 'danger')
+            flash('Ошибка формата даты или числа: {}'.format(str(e)), 'danger')
             return redirect(request.url)
         except Exception as e:
             db.session.rollback()
-            flash(f'Ошибка при обновлении вакцинации: {str(e)}', 'danger')
+            flash('Ошибка при обновлении вакцинации: {}'.format(str(e)), 'danger')
             return redirect(request.url)
     
     return render_template('vaccination_form.html', vaccination=vaccination, is_edit=True)
@@ -862,7 +1006,7 @@ def get_appointments():
         events.append({
             'id': a.id,
             'title': "",
-            'start': f"{a.appointment_date}T{a.time}",
+            'start': "{}T{}".format(a.appointment_date, a.time),
             'end': calculate_end_time(a.appointment_date, a.time, a.duration),
             'extendedProps': {
                 'card_number': pet.card_number if pet else "N/A",
@@ -876,7 +1020,7 @@ def get_appointments():
 
 def calculate_end_time(appointment_date, start_time, duration):
     """Функция для вычисления времени окончания приёма."""
-    start_datetime = datetime.strptime(f"{appointment_date} {start_time}", "%Y-%m-%d %H:%M")
+    start_datetime = datetime.strptime("{} {}".format(appointment_date, start_time), "%Y-%m-%d %H:%M")
     end_datetime = start_datetime + timedelta(minutes=duration)
     return end_datetime.strftime("%Y-%m-%dT%H:%M")
 
@@ -913,7 +1057,7 @@ def appointment_delete(appointment_id):
         flash('Приём успешно удалён!', 'success')
     except Exception as e:
         db.session.rollback()
-        flash(f'Ошибка при удалении приёма: {str(e)}', 'danger')
+        flash('Ошибка при удалении приёма: {}'.format(str(e)), 'danger')
     
     return redirect(url_for('index'))
 
@@ -1029,18 +1173,48 @@ def update_appointment(appointment_id):
 @app.route('/statistics')
 def statistics():
     """Страница статистики с графиками по вакцинациям, возрасту и виду животных"""
-    from sqlalchemy import func, extract, case
+    from sqlalchemy import func, extract, case, and_, or_
     
-    # Статистика по вакцинациям по месяцам за последний год
+    # Получаем параметры фильтрации
+    period = request.args.get('period', 'year')  # year, 6months, 3months, month
+    compare_with_previous = request.args.get('compare', 'false').lower() == 'true'
+    
+    # Определяем период анализа
     current_date = datetime.now().date()
-    year_ago = current_date.replace(year=current_date.year - 1)
+    if period == 'year':
+        start_date = current_date.replace(year=current_date.year - 1)
+        period_name = "за последний год"
+    elif period == '6months':
+        start_date = current_date - timedelta(days=180)
+        period_name = "за последние 6 месяцев"
+    elif period == '3months':
+        start_date = current_date - timedelta(days=90)
+        period_name = "за последние 3 месяца"
+    elif period == 'month':
+        start_date = current_date - timedelta(days=30)
+        period_name = "за последний месяц"
+    else:
+        start_date = current_date.replace(year=current_date.year - 1)
+        period_name = "за последний год"
     
+    # Для сравнения с предыдущим периодом
+    if compare_with_previous:
+        period_days = (current_date - start_date).days
+        prev_start_date = start_date - timedelta(days=period_days)
+        prev_end_date = start_date
+    else:
+        prev_start_date = None
+        prev_end_date = None
+    
+    # === ОСНОВНАЯ СТАТИСТИКА ===
+    
+    # Статистика по вакцинациям по месяцам
     vaccination_stats = db.session.query(
         extract('month', Vaccination.date_administered).label('month'),
         extract('year', Vaccination.date_administered).label('year'),
         func.count(Vaccination.id).label('count')
     ).filter(
-        Vaccination.date_administered >= year_ago
+        Vaccination.date_administered >= start_date
     ).group_by(
         extract('month', Vaccination.date_administered),
         extract('year', Vaccination.date_administered)
@@ -1056,7 +1230,7 @@ def statistics():
         } for row in vaccination_stats
     ]
     
-    # Статистика по типам вакцинаций
+    # Статистика по типам вакцинаций (за всё время)
     vaccination_types = db.session.query(
         Vaccination.vaccination_type,
         func.count(Vaccination.id).label('count')
@@ -1066,6 +1240,30 @@ def statistics():
             'vaccination_type': row.vaccination_type or 'Не указано',
             'count': int(row.count)
         } for row in vaccination_types
+    ]
+    
+    # Статистика по типам вакцинаций по месяцам (за всё время)
+    vaccination_types_monthly = db.session.query(
+        extract('month', Vaccination.date_administered).label('month'),
+        extract('year', Vaccination.date_administered).label('year'),
+        Vaccination.vaccination_type,
+        func.count(Vaccination.id).label('count')
+    ).group_by(
+        extract('month', Vaccination.date_administered),
+        extract('year', Vaccination.date_administered),
+        Vaccination.vaccination_type
+    ).order_by(
+        extract('year', Vaccination.date_administered),
+        extract('month', Vaccination.date_administered),
+        Vaccination.vaccination_type
+    ).all()
+    vaccination_types_monthly = [
+        {
+            'month': int(row.month),
+            'year': int(row.year),
+            'vaccination_type': row.vaccination_type or 'Не указано',
+            'count': int(row.count)
+        } for row in vaccination_types_monthly
     ]
     
     # Статистика по видам животных
@@ -1079,6 +1277,7 @@ def statistics():
             'count': int(row.count)
         } for row in species_stats
     ]
+    
     
     # Статистика по возрасту животных
     age_stats = db.session.query(
@@ -1110,13 +1309,16 @@ def statistics():
         } for row in age_stats
     ]
     
-    # Статистика по приёмам по месяцам за последний год
+    
+    # === СТАТИСТИКА ПО ПРИЁМАМ ===
+    
+    # Статистика по приёмам по месяцам
     appointment_stats = db.session.query(
         extract('month', Appointment.appointment_date).label('month'),
         extract('year', Appointment.appointment_date).label('year'),
         func.count(Appointment.id).label('count')
     ).filter(
-        Appointment.appointment_date >= year_ago.strftime('%Y-%m-%d')
+        Appointment.appointment_date >= start_date.strftime('%Y-%m-%d')
     ).group_by(
         extract('month', Appointment.appointment_date),
         extract('year', Appointment.appointment_date)
@@ -1138,7 +1340,7 @@ def statistics():
         extract('year', Appointment.appointment_date).label('year'),
         func.sum(AppointmentTreatment.total_price).label('total_cost')
     ).join(AppointmentTreatment).filter(
-        Appointment.appointment_date >= year_ago.strftime('%Y-%m-%d')
+        Appointment.appointment_date >= start_date.strftime('%Y-%m-%d')
     ).group_by(
         extract('month', Appointment.appointment_date),
         extract('year', Appointment.appointment_date)
@@ -1154,24 +1356,410 @@ def statistics():
         } for row in appointment_costs
     ]
     
-    # Общая статистика
+    
+    # Статистика по популярным услугам/назначениям
+    popular_treatments = db.session.query(
+        Treatment.name,
+        Treatment.category,
+        func.count(AppointmentTreatment.id).label('count'),
+        func.sum(AppointmentTreatment.total_price).label('total_revenue')
+    ).join(AppointmentTreatment).join(Appointment).filter(
+        Appointment.appointment_date >= start_date.strftime('%Y-%m-%d')
+    ).group_by(Treatment.id, Treatment.name, Treatment.category).order_by(
+        func.count(AppointmentTreatment.id).desc()
+    ).limit(15).all()
+    popular_treatments = [
+        {
+            'name': row.name,
+            'category': row.category,
+            'count': int(row.count),
+            'total_revenue': float(row.total_revenue or 0)
+        } for row in popular_treatments
+    ]
+    
+    # Статистика по категориям услуг
+    treatment_categories = db.session.query(
+        Treatment.category,
+        func.count(AppointmentTreatment.id).label('count'),
+        func.sum(AppointmentTreatment.total_price).label('total_revenue')
+    ).join(AppointmentTreatment).join(Appointment).filter(
+        Appointment.appointment_date >= start_date.strftime('%Y-%m-%d')
+    ).group_by(Treatment.category).all()
+    
+    # Функция для перевода категорий на русский
+    def translate_category(category):
+        translations = {
+            'general_services': 'Общие услуги',
+            'lab_tests': 'Лабораторные анализы',
+            'vaccines': 'Вакцинации',
+            'surgery': 'Хирургия',
+            'dental': 'Стоматология',
+            'emergency': 'Экстренная помощь',
+            'consultation': 'Консультации',
+            'diagnostics': 'Диагностика',
+            'treatment': 'Лечение',
+            'prevention': 'Профилактика',
+            'grooming': 'Груминг',
+            'boarding': 'Передержка',
+            'pharmacy': 'Аптека',
+            'other': 'Прочее'
+        }
+        return translations.get(category, category)
+    
+    treatment_categories = [
+        {
+            'category': translate_category(row.category),
+            'count': int(row.count),
+            'total_revenue': float(row.total_revenue or 0)
+        } for row in treatment_categories
+    ]
+    
+    # === СРАВНЕНИЕ С ПРЕДЫДУЩИМ ПЕРИОДОМ ===
+    prev_vaccination_stats = []
+    prev_appointment_stats = []
+    prev_appointment_costs = []
+    
+    if compare_with_previous and prev_start_date and prev_end_date:
+        # Предыдущий период - вакцинации
+        prev_vaccination_stats = db.session.query(
+            extract('month', Vaccination.date_administered).label('month'),
+            extract('year', Vaccination.date_administered).label('year'),
+            func.count(Vaccination.id).label('count')
+        ).filter(
+            Vaccination.date_administered >= prev_start_date,
+            Vaccination.date_administered < prev_end_date
+        ).group_by(
+            extract('month', Vaccination.date_administered),
+            extract('year', Vaccination.date_administered)
+        ).order_by(
+            extract('year', Vaccination.date_administered),
+            extract('month', Vaccination.date_administered)
+        ).all()
+        prev_vaccination_stats = [
+            {
+                'month': int(row.month),
+                'year': int(row.year),
+                'count': int(row.count)
+            } for row in prev_vaccination_stats
+        ]
+        
+        # Предыдущий период - приёмы
+        prev_appointment_stats = db.session.query(
+            extract('month', Appointment.appointment_date).label('month'),
+            extract('year', Appointment.appointment_date).label('year'),
+            func.count(Appointment.id).label('count')
+        ).filter(
+            Appointment.appointment_date >= prev_start_date.strftime('%Y-%m-%d'),
+            Appointment.appointment_date < prev_end_date.strftime('%Y-%m-%d')
+        ).group_by(
+            extract('month', Appointment.appointment_date),
+            extract('year', Appointment.appointment_date)
+        ).order_by(
+            extract('year', Appointment.appointment_date),
+            extract('month', Appointment.appointment_date)
+        ).all()
+        prev_appointment_stats = [
+            {
+                'month': int(row.month),
+                'year': int(row.year),
+                'count': int(row.count)
+            } for row in prev_appointment_stats
+        ]
+        
+        # Предыдущий период - доходы
+        prev_appointment_costs = db.session.query(
+            extract('month', Appointment.appointment_date).label('month'),
+            extract('year', Appointment.appointment_date).label('year'),
+            func.sum(AppointmentTreatment.total_price).label('total_cost')
+        ).join(AppointmentTreatment).filter(
+            Appointment.appointment_date >= prev_start_date.strftime('%Y-%m-%d'),
+            Appointment.appointment_date < prev_end_date.strftime('%Y-%m-%d')
+        ).group_by(
+            extract('month', Appointment.appointment_date),
+            extract('year', Appointment.appointment_date)
+        ).order_by(
+            extract('year', Appointment.appointment_date),
+            extract('month', Appointment.appointment_date)
+        ).all()
+        prev_appointment_costs = [
+            {
+                'month': int(row.month),
+                'year': int(row.year),
+                'total_cost': float(row.total_cost or 0)
+            } for row in prev_appointment_costs
+        ]
+    
+    # === ОБЩАЯ СТАТИСТИКА ===
     total_pets = Pet.query.count()
     total_owners = Owner.query.count()
     total_vaccinations = Vaccination.query.count()
     total_appointments = Appointment.query.count()
     
+    # Статистика за период
+    period_vaccinations = Vaccination.query.filter(Vaccination.date_administered >= start_date).count()
+    period_appointments = Appointment.query.filter(Appointment.appointment_date >= start_date.strftime('%Y-%m-%d')).count()
+    
+    # Средний чек
+    avg_check = db.session.query(func.avg(AppointmentTreatment.total_price)).join(Appointment).filter(
+        Appointment.appointment_date >= start_date.strftime('%Y-%m-%d')
+    ).scalar() or 0
+    
+    # Общий доход за период
+    total_revenue = db.session.query(func.sum(AppointmentTreatment.total_price)).join(Appointment).filter(
+        Appointment.appointment_date >= start_date.strftime('%Y-%m-%d')
+    ).scalar() or 0
+    
+    # === СТАТИСТИКА ПО ВАКЦИНАМ ЗА ВЫБРАННЫЙ МЕСЯЦ ===
+    
+    # Получаем параметры выбора месяца/года или используем текущий месяц
+    selected_vaccine_month = request.args.get('vaccine_month', type=int, default=current_date.month)
+    selected_vaccine_year = request.args.get('vaccine_year', type=int, default=current_date.year)
+    
+    # Форматируем название месяца на русском
+    month_names_ru = {
+        1: 'Январь', 2: 'Февраль', 3: 'Март', 4: 'Апрель',
+        5: 'Май', 6: 'Июнь', 7: 'Июль', 8: 'Август',
+        9: 'Сентябрь', 10: 'Октябрь', 11: 'Ноябрь', 12: 'Декабрь'
+    }
+    last_month_name = "{} {}".format(month_names_ru[selected_vaccine_month], selected_vaccine_year)
+    
+    # Получаем список доступных годов из базы данных
+    vaccine_years_query = db.session.query(
+        func.distinct(extract('year', Vaccination.date_administered)).label('year')
+    ).order_by(extract('year', Vaccination.date_administered).desc()).all()
+    vaccine_years = [int(row.year) for row in vaccine_years_query if row.year]
+    
+    # Если нет данных, добавляем текущий год
+    if not vaccine_years:
+        vaccine_years = [current_date.year]
+    
+    # Определяем границы выбранного месяца
+    from calendar import monthrange
+    _, last_day = monthrange(selected_vaccine_year, selected_vaccine_month)
+    month_start = date(selected_vaccine_year, selected_vaccine_month, 1)
+    month_end = date(selected_vaccine_year, selected_vaccine_month, last_day)
+    
+    # Подсчёт вакцинаций по типам за выбранный месяц
+    last_month_vaccinations = db.session.query(
+        Vaccination.vaccination_type,
+        func.count(Vaccination.id).label('count')
+    ).filter(
+        Vaccination.date_administered >= month_start,
+        Vaccination.date_administered <= month_end
+    ).group_by(Vaccination.vaccination_type).all()
+    
+    last_month_vaccinations = [
+        {
+            'vaccination_type': row.vaccination_type or 'Не указано',
+            'count': int(row.count)
+        } for row in last_month_vaccinations
+    ]
+    
+    # Подсчёт по названиям вакцин за выбранный месяц
+    last_month_vaccines_detail = db.session.query(
+        Vaccination.vaccine_name,
+        Vaccination.vaccination_type,
+        func.count(Vaccination.id).label('count')
+    ).filter(
+        Vaccination.date_administered >= month_start,
+        Vaccination.date_administered <= month_end
+    ).group_by(Vaccination.vaccine_name, Vaccination.vaccination_type).order_by(
+        func.count(Vaccination.id).desc()
+    ).all()
+    
+    last_month_vaccines_detail = [
+        {
+            'vaccine_name': row.vaccine_name or 'Не указано',
+            'vaccination_type': row.vaccination_type or 'Не указано',
+            'count': int(row.count)
+        } for row in last_month_vaccines_detail
+    ]
+    
+    last_month_date = month_start
+    
+    # === СТАТИСТИКА ПО ГОДАМ ЗА ПОСЛЕДНИЕ 5 ЛЕТ ===
+    current_year = current_date.year
+    years_list = list(range(current_year - 4, current_year + 1))  # Последние 5 лет
+    
+    # Статистика по животным по годам (по дате первого приёма или первой вакцинации)
+    # Для каждого животного находим минимальную дату приёма
+    first_appointment_dates = db.session.query(
+        Appointment.pet_id,
+        func.min(Appointment.appointment_date).label('first_date')
+    ).group_by(Appointment.pet_id).subquery()
+    
+    yearly_pets = db.session.query(
+        extract('year', first_appointment_dates.c.first_date).label('year'),
+        func.count(first_appointment_dates.c.pet_id).label('count')
+    ).filter(
+        extract('year', first_appointment_dates.c.first_date).in_(years_list)
+    ).group_by(extract('year', first_appointment_dates.c.first_date)).all()
+    
+    yearly_pets_dict = {int(row.year): int(row.count) for row in yearly_pets}
+    
+    # Добавляем животных, у которых есть только вакцинации (без приёмов)
+    pets_with_appointments = db.session.query(Appointment.pet_id).distinct()
+    
+    first_vacc_dates = db.session.query(
+        Vaccination.pet_id,
+        func.min(Vaccination.date_administered).label('first_date')
+    ).filter(
+        ~Vaccination.pet_id.in_(pets_with_appointments)
+    ).group_by(Vaccination.pet_id).subquery()
+    
+    pets_with_only_vacc = db.session.query(
+        extract('year', first_vacc_dates.c.first_date).label('year'),
+        func.count(first_vacc_dates.c.pet_id).label('count')
+    ).filter(
+        extract('year', first_vacc_dates.c.first_date).in_(years_list)
+    ).group_by(extract('year', first_vacc_dates.c.first_date)).all()
+    
+    for row in pets_with_only_vacc:
+        year = int(row.year)
+        yearly_pets_dict[year] = yearly_pets_dict.get(year, 0) + int(row.count)
+    
+    yearly_pets_stats = [
+        {'year': year, 'count': yearly_pets_dict.get(year, 0)} 
+        for year in years_list
+    ]
+    
+    # Статистика по приёмам по годам
+    yearly_appointments = db.session.query(
+        extract('year', Appointment.appointment_date).label('year'),
+        func.count(Appointment.id).label('count')
+    ).filter(
+        extract('year', Appointment.appointment_date).in_(years_list)
+    ).group_by(extract('year', Appointment.appointment_date)).all()
+    
+    yearly_appointments_dict = {int(row.year): int(row.count) for row in yearly_appointments}
+    yearly_appointments_stats = [
+        {'year': year, 'count': yearly_appointments_dict.get(year, 0)} 
+        for year in years_list
+    ]
+    
+    # Статистика по вакцинациям по годам
+    yearly_vaccinations = db.session.query(
+        extract('year', Vaccination.date_administered).label('year'),
+        func.count(Vaccination.id).label('count')
+    ).filter(
+        extract('year', Vaccination.date_administered).in_(years_list)
+    ).group_by(extract('year', Vaccination.date_administered)).all()
+    
+    yearly_vaccinations_dict = {int(row.year): int(row.count) for row in yearly_vaccinations}
+    yearly_vaccinations_stats = [
+        {'year': year, 'count': yearly_vaccinations_dict.get(year, 0)} 
+        for year in years_list
+    ]
+    
+    # Статистика по доходам по годам
+    yearly_revenue = db.session.query(
+        extract('year', Appointment.appointment_date).label('year'),
+        func.sum(AppointmentTreatment.total_price).label('total_revenue')
+    ).join(AppointmentTreatment).filter(
+        extract('year', Appointment.appointment_date).in_(years_list)
+    ).group_by(extract('year', Appointment.appointment_date)).all()
+    
+    yearly_revenue_dict = {int(row.year): float(row.total_revenue or 0) for row in yearly_revenue}
+    yearly_revenue_stats = [
+        {'year': year, 'total_revenue': yearly_revenue_dict.get(year, 0)} 
+        for year in years_list
+    ]
+    
+    # Средний чек по годам
+    yearly_avg_check = []
+    for year in years_list:
+        year_avg = db.session.query(
+            func.avg(AppointmentTreatment.total_price)
+        ).join(Appointment).filter(
+            extract('year', Appointment.appointment_date) == year
+        ).scalar() or 0
+        yearly_avg_check.append({
+            'year': year,
+            'avg_check': float(year_avg)
+        })
+    
+    # Общее количество животных на конец каждого года (накопленное)
+    # Используем дату первого приёма или первой вакцинации как дату регистрации
+    yearly_total_pets = []
+    for year in years_list:
+        year_end = date(year, 12, 31)
+        year_end_str = year_end.strftime('%Y-%m-%d')
+        
+        # Находим уникальных животных, у которых был хотя бы один приём до конца года
+        pets_with_appts = db.session.query(Appointment.pet_id).distinct().filter(
+            Appointment.appointment_date <= year_end_str
+        ).subquery()
+        
+        # Находим животных без приёмов, у которых была хотя бы одна вакцинация до конца года
+        pets_with_vacc_only = db.session.query(Vaccination.pet_id).distinct().filter(
+            Vaccination.date_administered <= year_end_str,
+            ~Vaccination.pet_id.in_(db.session.query(pets_with_appts.c.pet_id))
+        ).subquery()
+        
+        # Считаем общее количество уникальных животных
+        total_appts = db.session.query(func.count(func.distinct(pets_with_appts.c.pet_id))).scalar() or 0
+        total_vacc_only = db.session.query(func.count(func.distinct(pets_with_vacc_only.c.pet_id))).scalar() or 0
+        total = total_appts + total_vacc_only
+        
+        yearly_total_pets.append({
+            'year': year,
+            'total': int(total)
+        })
+    
     return render_template('statistics.html',
+                         # Основные данные
                          vaccination_stats=vaccination_stats,
                          vaccination_types=vaccination_types,
+                         vaccination_types_monthly=vaccination_types_monthly,
                          species_stats=species_stats,
                          age_stats=age_stats,
                          appointment_stats=appointment_stats,
                          appointment_costs=appointment_costs,
+                         popular_treatments=popular_treatments,
+                         treatment_categories=treatment_categories,
+                         
+                         # Сравнение с предыдущим периодом
+                         prev_vaccination_stats=prev_vaccination_stats,
+                         prev_appointment_stats=prev_appointment_stats,
+                         prev_appointment_costs=prev_appointment_costs,
+                         
+                         # Общая статистика
                          total_pets=total_pets,
                          total_owners=total_owners,
                          total_vaccinations=total_vaccinations,
-                         total_appointments=total_appointments)
+                         total_appointments=total_appointments,
+                         period_vaccinations=period_vaccinations,
+                         period_appointments=period_appointments,
+                         avg_check=float(avg_check),
+                         total_revenue=float(total_revenue),
+                         
+                         # Статистика по вакцинам за последний месяц
+                         last_month_vaccinations=last_month_vaccinations,
+                         last_month_vaccines_detail=last_month_vaccines_detail,
+                         last_month_date=last_month_date,
+                         last_month_name=last_month_name,
+                         vaccine_years=vaccine_years,
+                         selected_vaccine_month=selected_vaccine_month,
+                         selected_vaccine_year=selected_vaccine_year,
+                         
+                         # Параметры фильтрации
+                         period=period,
+                         period_name=period_name,
+                         compare_with_previous=compare_with_previous,
+                         
+                         # Статистика по годам
+                         yearly_pets_stats=yearly_pets_stats,
+                         yearly_appointments_stats=yearly_appointments_stats,
+                         yearly_vaccinations_stats=yearly_vaccinations_stats,
+                         yearly_revenue_stats=yearly_revenue_stats,
+                         yearly_avg_check=yearly_avg_check,
+                         yearly_total_pets=yearly_total_pets,
+                         years_list=years_list)
 
+@app.route('/settings')
+def settings():
+    """Страница настроек приложения"""
+    return render_template('settings.html')
 
 @app.route('/api/create_appointment', methods=['POST'])
 def create_appointment():
@@ -1202,7 +1790,7 @@ def get_pets_by_owner():
     # Убираем параметр term, так как теперь загружаем всех питомцев
     pets = Pet.query.filter_by(owner_id=owner_id).all()
     
-    return jsonify([{'id': p.id, 'text': f"{p.name} ({p.card_number})"} for p in pets])
+    return jsonify([{'id': p.id, 'text': "{} ({})".format(p.name, p.card_number)} for p in pets])
 
 # API: список животных у владельца
 @app.route('/api/pets')
@@ -1221,7 +1809,7 @@ def search_owners():
         return jsonify([])
     
     owners = Owner.query.filter(
-        Owner.name.ilike(f'%{search_term}%')
+        Owner.name.ilike('%{}%'.format(search_term))
     ).limit(10).all()
     
     return jsonify([{'id': o.id, 'text': o.name} for o in owners])
@@ -1292,7 +1880,7 @@ def owner_card(owner_id):
             
         except Exception as e:
             db.session.rollback()
-            flash(f'Ошибка при обновлении: {str(e)}', 'danger')
+            flash('Ошибка при обновлении: {}'.format(str(e)), 'danger')
     
     return render_template(
         'owner_card.html', 
@@ -1311,9 +1899,9 @@ def search_owners_for_transfer():
     # Ищем по имени, телефону или адресу с более подробной информацией
     owners = Owner.query.filter(
         db.or_(
-            Owner.name.ilike(f'%{query}%'),
-            Owner.phone.ilike(f'%{query}%'),
-            Owner.address.ilike(f'%{query}%')
+            Owner.name.ilike('%{}%'.format(query)),
+            Owner.phone.ilike('%{}%'.format(query)),
+            Owner.address.ilike('%{}%'.format(query))
         )
     ).limit(20).all()
     
@@ -1340,7 +1928,7 @@ def change_pet_owner(pet_id):
     pet.owner_id = new_owner.id
     db.session.commit()
     
-    flash(f'Животное успешно переведено на владельца: {new_owner.name}', 'success')
+    flash('Животное успешно переведено на владельца: {}'.format(new_owner.name), 'success')
     return redirect(url_for('owner_card', owner_id=new_owner.id))
 
 @app.route('/problematic_owners')
@@ -1405,6 +1993,7 @@ def owners_list():
     search_pet = request.args.get('search_pet', '').strip().upper()
     search_card = request.args.get('search_card', '').strip()
     search_phone = request.args.get('search_phone', '').strip()
+    search_address = request.args.get('search_address', '').strip().upper()
 
     query = db.session.query(Owner).outerjoin(Pet).distinct()
     #query = db.session.query(Owner).options(selectinload(Owner.pets))
@@ -1419,9 +2008,9 @@ def owners_list():
         for part in search_parts:
             # Ищем в начале строки (фамилия) или после пробела (имя)
             conditions.append(db.or_(
-                Owner.name.ilike(f'{part} %'),  # Фамилия в начале
-                Owner.name.ilike(f'% {part} %'), # Имя в середине
-                Owner.name.ilike(f'% {part}')    # Имя в конце (если нет отчества)
+                Owner.name.ilike('{} %'.format(part)),  # Фамилия в начале
+                Owner.name.ilike('% {} %'.format(part)), # Имя в середине
+                Owner.name.ilike('% {}'.format(part))    # Имя в конце (если нет отчества)
             ))
         
         # Объединяем условия через AND (и фамилия, и имя должны совпадать)
@@ -1433,7 +2022,9 @@ def owners_list():
         query = query.filter(Pet.card_number == search_card)
     if search_phone:
         phone_digits = ''.join(filter(str.isdigit, search_phone))
-        query = query.filter(Owner.phone.ilike(f'%{phone_digits}%'))
+        query = query.filter(Owner.phone.ilike('%{}%'.format(phone_digits)))
+    if search_address:
+        query = query.filter(Owner.address.ilike('%{}%'.format(search_address)))
 
     owners_pagination = query.order_by(Owner.name)\
                            .paginate(page=page, per_page=per_page, error_out=False)
@@ -1446,6 +2037,7 @@ def owners_list():
         search_pet=search_pet,
         search_card=search_card,
         search_phone=search_phone,
+        search_address=search_address,
         problematic_owner_ids=None
     )
 
@@ -1463,7 +2055,7 @@ def delete_owner(owner_id):
         flash('Владелец и все его животные успешно удалены', 'success')
     except Exception as e:
         db.session.rollback()
-        flash(f'Ошибка при удалении: {str(e)}', 'danger')
+        flash('Ошибка при удалении: {}'.format(str(e)), 'danger')
     
     return redirect(url_for('owners_list'))
 
@@ -1481,7 +2073,7 @@ def add_pet():
         # Предварительная проверка номера карточки
         existing_pet = Pet.query.filter_by(card_number=card_number).first()
         if existing_pet:
-            flash(f'Ошибка: Животное с номером карточки {card_number} уже существует!', 'danger')
+            flash('Ошибка: Животное с номером карточки {} уже существует!'.format(card_number), 'danger')
             return redirect(url_for('owner_card', owner_id=owner_id))
 
         new_pet = Pet(
@@ -1507,13 +2099,13 @@ def add_pet():
     except IntegrityError as e:
         db.session.rollback()
         if 'card_number' in str(e.orig).lower():
-            flash(f'Ошибка: Животное с номером карточки {card_number} уже существует!', 'danger')
+            flash('Ошибка: Животное с номером карточки {} уже существует!'.format(card_number), 'danger')
         else:
             flash('Произошла ошибка при сохранении данных', 'danger')
 
     except Exception as e:
         db.session.rollback()
-        flash(f'Ошибка при добавлении животного: {str(e)}', 'danger')
+        flash('Ошибка при добавлении животного: {}'.format(str(e)), 'danger')
 
     return redirect(url_for('owner_card', owner_id=request.form['owner_id']))
 
@@ -1567,7 +2159,7 @@ def pet_card(pet_id):
 
         except Exception as e:
             db.session.rollback()
-            flash(f"Ошибка: {str(e)}", 'error')
+            flash("Ошибка: {}".format(str(e)), 'error')
             return redirect(url_for('owner_card', owner_id=owner.id))
 
     # GET-запросы обрабатываются отдельной страницей
@@ -1621,7 +2213,7 @@ def print_pet_card(pet_id):
     
     response = make_response(file_stream.read())
     response.headers['Content-Type'] = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-    response.headers['Content-Disposition'] = f'attachment; filename=pet_card_{pet.id}.docx'
+    response.headers['Content-Disposition'] = 'attachment; filename=pet_card_{}.docx'.format(pet.id)
     return response
 
 # ================================
@@ -1644,21 +2236,21 @@ def uppercase_all_owner_names():
         for owner in owners:
             owner.name = owner.name.upper()
         db.session.commit()
-        print(f"Успешно обновлено {len(owners)} записей.")
+        print("Успешно обновлено {} записей.".format(len(owners)))
 
     except Exception as e:
         db.session.rollback()
-        print(f"❌ Ошибка: {e}")
+        print("Ошибка: {}".format(e))
 
 @app.cli.command("import-csv")
 def import_csv_command():
     """Импорт данных из CSV файла"""
     try:
         from csv_importer import import_csv  # Вынесем импортер в отдельный файл
-        import_csv('test_.csv')
+        import_csv('data/test_.csv')
         print("Импорт успешно завершен!")
     except Exception as e:
-        print(f"Ошибка импорта: {str(e)}")
+        print("Ошибка импорта: {}".format(str(e)))
         import traceback
         traceback.print_exc()
 
@@ -1667,10 +2259,10 @@ def import_new_csv_command():
     """Импорт данных из CSV файла"""
     try:
         from csv_importer import import_only_new_pets  # Вынесем импортер в отдельный файл
-        import_only_new_pets('animals_temp.csv')
+        import_only_new_pets('data/animals_temp.csv')
         print("Импорт успешно завершен!")
     except Exception as e:
-        print(f"Ошибка импорта: {str(e)}")
+        print("Ошибка импорта: {}".format(str(e)))
         import traceback
         traceback.print_exc()
 
@@ -1679,10 +2271,10 @@ def import_owner_csv_command():
     """Импорт данных из CSV файла"""
     try:
         from csv_importer import import_owners_from_csv  # Вынесем импортер в отдельный файл
-        import_owners_from_csv('owners_test.csv')
+        import_owners_from_csv('data/owners_test.csv')
         print("Импорт успешно завершен!")
     except Exception as e:
-        print(f"Ошибка импорта: {str(e)}")
+        print("Ошибка импорта: {}".format(str(e)))
         import traceback
         traceback.print_exc()
 
@@ -1691,10 +2283,10 @@ def import_vac_csv_command():
     """Импорт данных о вакцинах из CSV файла"""
     try:
         from csv_importer import import_vaccinations  # Вынесем импортер в отдельный файл
-        import_vaccinations('vac_for_test2.csv')
+        import_vaccinations('data/vac_for_test2.csv')
         print("Импорт успешно завершен!")
     except Exception as e:
-        print(f"Ошибка импорта: {str(e)}")
+        print("Ошибка импорта: {}".format(str(e)))
         import traceback
         traceback.print_exc()
 
@@ -1706,7 +2298,7 @@ def reset_db():
         db.create_all()
         print("База данных успешно пересоздана!")
     except Exception as e:
-        print(f"Ошибка: {str(e)}")
+        print("Ошибка: {}".format(str(e)))
         import traceback
         traceback.print_exc()
 
@@ -1726,10 +2318,10 @@ def normalize_phones_command(dry_run):
         new_phone = ', '.join(result['valid']) if result['valid'] else original
         
         if new_phone != original:
-            print(f"\nOwner ID: {owner.id}")
-            print(f"Original: {original}")
-            print(f"Normalized: {new_phone}")
-            print(f"Invalid: {', '.join(result['invalid'])}")
+            print("\nOwner ID: {}".format(owner.id))
+            print("Original: {}".format(original))
+            print("Normalized: {}".format(new_phone))
+            print("Invalid: {}".format(', '.join(result['invalid'])))
             
             if not dry_run:
                 owner.phone = new_phone
@@ -1740,7 +2332,7 @@ def normalize_phones_command(dry_run):
             print("\nChanges committed to database!")
         except Exception as e:
             db.session.rollback()
-            print(f"\nError committing changes: {str(e)}")
+            print("\nError committing changes: {}".format(str(e)))
     else:
         print("\nDry run complete. No changes saved.")
 
@@ -1748,6 +2340,256 @@ def normalize_phones_command(dry_run):
 # ЗАПУСК ПРИЛОЖЕНИЯ
 # ================================
 
+# ================================
+# МАРШРУТЫ ДЛЯ ML ДИАГНОСТИКИ
+# ================================
+
+@app.route('/diagnosis')
+def diagnosis_page():
+    """Страница диагностики заболеваний"""
+    return render_template('diagnosis_extended.html')
+
+@app.route('/diagnose', methods=['POST'])
+@csrf.exempt
+def diagnose():
+    """API для диагностики заболеваний"""
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({'success': False, 'error': 'Пустые данные'}), 400
+        
+        animal_type = data.get('animal_type')
+        symptoms = data.get('symptoms', [])
+        lab_analyses = data.get('lab_analyses', {})
+        
+        if not animal_type:
+            return jsonify({'success': False, 'error': 'Не указан вид животного'}), 400
+        
+        if not symptoms:
+            return jsonify({'success': False, 'error': 'Не указаны симптомы'}), 400
+        
+        # Проверяем, включена ли ML диагностика
+        if not ml_enabled:
+            return jsonify({'success': False, 'error': 'ML диагностика выключена. Включите её в настройках.'}), 403
+        
+        # Проверяем, загружена ли модель
+        if ml_model is None:
+            # Пытаемся загрузить модель, если она не загружена
+            if not load_ml_model():
+                return jsonify({'success': False, 'error': 'ML модель не найдена или не может быть загружена'}), 500
+        
+        # Получаем предсказания
+        if isinstance(ml_model, dict):
+            # Проверяем, это взвешенная модель или другая
+            if 'animal_type_encoder' in ml_model:
+                # Взвешенная модель
+                model = ml_model['model']
+                scaler = ml_model['scaler']
+                feature_selector = ml_model['feature_selector']
+                label_encoder = ml_model['label_encoder']
+                animal_type_encoder = ml_model['animal_type_encoder']
+                feature_names = ml_model['feature_names']
+                
+                # Создаем вектор признаков на основе feature_names
+                features = np.zeros(len(feature_names))
+                
+                # Устанавливаем симптомы
+                for symptom in symptoms:
+                    if symptom in feature_names:
+                        idx = feature_names.index(symptom)
+                        features[idx] = 1
+                
+                # Устанавливаем лабораторные анализы
+                for lab_name, lab_value in lab_analyses.items():
+                    lab_feature = "lab_{}_{}".format(lab_name, lab_value)
+                    if lab_feature in feature_names:
+                        idx = feature_names.index(lab_feature)
+                        features[idx] = 1
+                
+                # Устанавливаем тип животного
+                if 'animal_type_encoded' in feature_names:
+                    try:
+                        animal_type_encoded = animal_type_encoder.transform([animal_type])[0]
+                        idx = feature_names.index('animal_type_encoded')
+                        features[idx] = animal_type_encoded
+                    except:
+                        pass  # Если тип животного не найден, пропускаем
+                
+                # Масштабирование признаков
+                features_scaled = scaler.transform([features])
+                
+                # Выбор признаков
+                features_selected = feature_selector.transform(features_scaled)
+                
+                # Предсказание
+                if hasattr(model, 'predict_proba'):
+                    probabilities = model.predict_proba(features_selected)[0]
+                    classes = model.classes_
+                else:
+                    # Fallback
+                    prediction = model.predict(features_selected)[0]
+                    probabilities = np.zeros(len(classes))
+                    if prediction in classes:
+                        idx = list(classes).index(prediction)
+                        probabilities[idx] = 1.0
+                
+                # Получение топ-5 предсказаний
+                top_indices = np.argsort(probabilities)[::-1][:5]
+                predictions = []
+                for idx in top_indices:
+                    disease = label_encoder.inverse_transform([classes[idx]])[0]
+                    probability = probabilities[idx]
+                    predictions.append([disease, probability])
+                    
+            elif 'feature_selector' in ml_model:
+                # Улучшенная модель
+                model = ml_model['model']
+                scaler = ml_model['scaler']
+                feature_selector = ml_model['feature_selector']
+                label_encoder = ml_model['label_encoder']
+                feature_names = ml_model['feature_names']
+                
+                # Создаем вектор признаков на основе feature_names
+                features = np.zeros(len(feature_names))
+                
+                # Устанавливаем симптомы
+                for symptom in symptoms:
+                    if symptom in feature_names:
+                        idx = feature_names.index(symptom)
+                        features[idx] = 1
+                
+                # Устанавливаем лабораторные анализы
+                for lab_name, lab_value in lab_analyses.items():
+                    lab_feature = "lab_{}_{}".format(lab_name, lab_value)
+                    if lab_feature in feature_names:
+                        idx = feature_names.index(lab_feature)
+                        features[idx] = 1
+                
+                # Масштабирование признаков
+                features_scaled = scaler.transform([features])
+                
+                # Выбор признаков
+                features_selected = feature_selector.transform(features_scaled)
+                
+                # Предсказание
+                if hasattr(model, 'predict_proba'):
+                    probabilities = model.predict_proba(features_selected)[0]
+                    classes = model.classes_
+                else:
+                    # Fallback
+                    prediction = model.predict(features_selected)[0]
+                    probabilities = np.zeros(len(classes))
+                    if prediction in classes:
+                        idx = list(classes).index(prediction)
+                        probabilities[idx] = 1.0
+                
+                # Получение топ-5 предсказаний
+                top_indices = np.argsort(probabilities)[::-1][:5]
+                predictions = []
+                for idx in top_indices:
+                    disease = classes[idx]
+                    probability = probabilities[idx]
+                    predictions.append([disease, probability])
+                    
+            else:
+                # Стандартная модель
+                model = ml_model['model']
+                scaler = ml_model['scaler']
+                symptoms_list = ml_model['symptoms']
+                diseases_list = ml_model['diseases']
+                feature_names = ml_model['feature_names']
+                
+                # Создаем вектор признаков на основе feature_names
+                features = np.zeros(len(feature_names))
+                
+                # Устанавливаем симптомы
+                for symptom in symptoms:
+                    if symptom in feature_names:
+                        idx = feature_names.index(symptom)
+                        features[idx] = 1
+                
+                # Устанавливаем лабораторные анализы
+                for lab_name, lab_value in lab_analyses.items():
+                    if lab_name in feature_names:
+                        idx = feature_names.index(lab_name)
+                        features[idx] = 1
+                
+                # Масштабирование признаков
+                features_scaled = scaler.transform([features])
+                
+                # Предсказание
+                if hasattr(model, 'predict_proba'):
+                    probabilities = model.predict_proba(features_scaled)[0]
+                    classes = model.classes_
+                else:
+                    # Для моделей без predict_proba
+                    if hasattr(model, 'decision_function'):
+                        scores = model.decision_function(features_scaled)[0]
+                        probabilities = np.exp(scores) / np.sum(np.exp(scores))
+                        classes = model.classes_
+                    else:
+                        # Fallback
+                        probabilities = np.ones(len(diseases_list)) / len(diseases_list)
+                        classes = diseases_list
+                
+                # Сортируем по вероятности
+                disease_probs = list(zip(classes, probabilities))
+                disease_probs.sort(key=lambda x: x[1], reverse=True)
+                predictions = disease_probs[:5]
+        else:
+            # Если модель - объект класса
+            predictions = ml_model.predict_diseases(animal_type, symptoms)
+        
+        return jsonify({
+            'success': True,
+            'predictions': predictions
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 scheduler = init_scheduler()
+# ML модель НЕ загружается по умолчанию - только при включении в настройках
+# load_ml_model()  # Загружаем ML модель при запуске - ОТКЛЮЧЕНО
+
+@app.route('/api/enable_ml', methods=['POST'])
+@csrf.exempt
+def enable_ml():
+    """API для включения/выключения ML модели"""
+    global ml_model, ml_enabled
+    try:
+        data = request.json
+        enabled = data.get('enabled', False)
+        
+        if enabled:
+            # Включаем ML - загружаем модель
+            if ml_model is None:
+                success = load_ml_model()
+                if success:
+                    ml_enabled = True
+                    return jsonify({'success': True, 'message': 'ML модель загружена'})
+                else:
+                    return jsonify({'success': False, 'error': 'Не удалось загрузить ML модель'}), 500
+            else:
+                ml_enabled = True
+                return jsonify({'success': True, 'message': 'ML модель уже загружена'})
+        else:
+            # Выключаем ML - освобождаем память
+            ml_model = None
+            ml_enabled = False
+            return jsonify({'success': True, 'message': 'ML модель выгружена'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/ml_status', methods=['GET'])
+def ml_status():
+    """API для проверки статуса ML модели"""
+    global ml_model, ml_enabled
+    return jsonify({
+        'enabled': ml_enabled,
+        'loaded': ml_model is not None
+    })
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

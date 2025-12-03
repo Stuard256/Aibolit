@@ -1,4 +1,4 @@
-# Файлы Python
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
@@ -21,67 +21,57 @@ wheels/
 *.egg
 MANIFEST
 
-# Файлы IDE и редакторов
-.idea/
+# Virtual Environment
+venv/
+ENV/
+env/
+.venv
+
+# IDEs
 .vscode/
+.idea/
 *.swp
 *.swo
 *~
 .DS_Store
-*.code-workspace
 
-# Файлы окружения и конфигурации
-.env
-.venv
-env/
-venv/
-temp/
-ENV/
-env.bak/
-venv.bak/
+# Flask
 instance/
-*.ini
-*.cfg
-*.local
+.webassets-cache
 
-# Файлы базы данных и логов
+# Database
 *.db
 *.sqlite
+*.sqlite3
+
+# Backups
+database_backups/
+*.bak
+
+# ML Models (если не хотите коммитить модели, раскомментируйте)
+# *.pkl
+# ml/models/*.pkl
+
+# Logs
 *.log
-*.pot
 
-# Файлы зависимостей
+# Temporary files
+*.tmp
+*.temp
+
+# Node modules (если используется)
 node_modules/
-p ackage-lock.json
-package.json
+package-lock.json
 
-# Файлы документации
-docs/_build/
+# Environment variables
+.env
+.env.local
 
-# Файлы Windows
+# Test coverage
+.coverage
+htmlcov/
+.pytest_cache/
+
+# OS
 Thumbs.db
-ehthumbs.db
-[Dd]esktop.ini
-$RECYCLE.BIN/
-
-# Файлы проекта
-/static/css/*.map
-/static/js/*.map
-/test_csv/
-/vac_for_test2.csv
-/card.docx
-/csv/
-instance/
-
-# Исключения (не игнорировать)
-!requirements.txt
-!app.py
-!forms.py
-!models.py
-!csv_importer.py
-!templates/
-instance/vet_clinic.db
-test_.csv
-.gitignore
-animals_temp.csv
-owners_test.csv
+.DS_Store

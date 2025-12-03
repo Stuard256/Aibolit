@@ -90,34 +90,6 @@ class Vaccination(db.Model):
     pet_age = db.Column(db.Integer, nullable=True)
     def __repr__(self):
         return f'<Vaccination {self.vaccine_name} for {self.pet.name}>'
-    @classmethod
-    def create_from_treatment(cls, appointment, treatment_rel):
-        treatment = treatment_rel.treatment
-        pet = appointment.pet
-        
-        return cls(
-            vaccine_name=treatment.name,
-            date_administered=appointment.appointment_date,
-            next_due_date=appointment.appointment_date + relativedelta(years=1),
-            pet_id=pet.id,
-            owner_id=pet.owner_id,
-            vaccination_type=', '.join(treatment.vaccine_types or []),
-            dose_ml=treatment_rel.quantity,
-            previous_vaccination_date=cls.get_previous_vaccination_date(pet, treatment.name),
-            owner_name=pet.owner.name,
-            owner_address=pet.owner.address,
-            pet_species=pet.species,
-            pet_breed=pet.breed,
-            pet_card_number=pet.card_number,
-            pet_age=pet.pet_age()
-        )
-    @staticmethod
-    def get_previous_vaccination_date(pet, vaccine_name):
-        last_vaccination = Vaccination.query.filter_by(
-            pet_id=pet.id,
-            vaccine_name=vaccine_name
-        ).order_by(Vaccination.date_administered.desc()).first()
-        return last_vaccination.date_administered if last_vaccination else None
 
 class Treatment(db.Model):
     id = db.Column(db.Integer, primary_key=True)
