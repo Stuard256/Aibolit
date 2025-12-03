@@ -6,6 +6,7 @@ import logging
 import os
 import re
 import shutil
+import subprocess
 import sys
 from datetime import date, datetime, timedelta
 
@@ -19,6 +20,114 @@ if sys.platform == 'win32':
         import codecs
         sys.stdout = codecs.getwriter('utf-8')(sys.stdout.buffer, 'strict')
         sys.stderr = codecs.getwriter('utf-8')(sys.stderr.buffer, 'strict')
+
+def check_and_install_dependencies():
+    """
+    Проверяет наличие необходимых зависимостей и устанавливает их при необходимости
+    """
+    # Список обязательных модулей для проверки
+    required_modules = {
+        'click': 'click',
+        'joblib': 'joblib',
+        'numpy': 'numpy',
+        'pdfkit': 'pdfkit',
+        'apscheduler': 'APScheduler',
+        'dateutil': 'python-dateutil',
+        'docxtpl': 'docxtpl',
+        'flask': 'Flask',
+        'flask_wtf': 'Flask-WTF',
+        'sqlalchemy': 'SQLAlchemy',
+        'pandas': 'pandas',
+        'sklearn': 'scikit-learn'
+    }
+    
+    missing_modules = []
+    
+    # Проверяем каждый модуль
+    for module_name, package_name in required_modules.items():
+        try:
+            __import__(module_name)
+        except ImportError:
+            missing_modules.append(package_name)
+    
+    # Если есть отсутствующие модули, устанавливаем их
+    if missing_modules:
+        print("[ВНИМАНИЕ] Обнаружены отсутствующие зависимости:")
+        for module in missing_modules:
+            print("  - {}".format(module))
+        print()
+        print("Устанавливаю недостающие зависимости...")
+        print()
+        
+        try:
+            # Определяем команду pip
+            python_cmd = sys.executable
+            pip_cmd = [python_cmd, '-m', 'pip', 'install', '--upgrade']
+            
+            # Сначала пытаемся установить из requirements.txt
+            if os.path.exists('requirements.txt'):
+                print("Устанавливаю зависимости из requirements.txt...")
+                result = subprocess.run(
+                    pip_cmd + ['-r', 'requirements.txt'],
+                    check=False
+                )
+                if result.returncode == 0:
+                    print("[OK] Зависимости из requirements.txt установлены")
+                else:
+                    print("[ВНИМАНИЕ] Ошибка при установке из requirements.txt")
+            
+            # Затем устанавливаем ML зависимости, если файл существует
+            if os.path.exists('requirements_ml.txt'):
+                print("Устанавливаю ML зависимости из requirements_ml.txt...")
+                result = subprocess.run(
+                    pip_cmd + ['-r', 'requirements_ml.txt'],
+                    check=False
+                )
+                if result.returncode == 0:
+                    print("[OK] ML зависимости установлены")
+                else:
+                    print("[ВНИМАНИЕ] Ошибка при установке ML зависимостей")
+            
+            # Проверяем еще раз, что ли модули установлены
+            still_missing = []
+            for module_name, package_name in required_modules.items():
+                try:
+                    __import__(module_name)
+                except ImportError:
+                    still_missing.append(package_name)
+            
+            # Если что-то все еще отсутствует, устанавливаем отдельно
+            if still_missing:
+                print("Устанавливаю оставшиеся модули: {}".format(', '.join(still_missing)))
+                result = subprocess.run(
+                    pip_cmd + still_missing,
+                    check=False
+                )
+                if result.returncode != 0:
+                    print("[ОШИБКА] Не удалось установить некоторые зависимости")
+                    print()
+                    print("Попробуйте установить вручную:")
+                    print("  pip install -r requirements.txt")
+                    print("  pip install -r requirements_ml.txt")
+                    sys.exit(1)
+            
+            print()
+            print("[OK] Все зависимости установлены. Перезапускаю приложение...")
+            print()
+            
+            # Перезапускаем скрипт после установки зависимостей
+            os.execv(sys.executable, [sys.executable] + sys.argv)
+            
+        except Exception as e:
+            print("[ОШИБКА] Не удалось установить зависимости: {}".format(e))
+            print()
+            print("Пожалуйста, установите зависимости вручную:")
+            print("  pip install -r requirements.txt")
+            print("  pip install -r requirements_ml.txt")
+            sys.exit(1)
+
+# Проверяем и устанавливаем зависимости перед импортом
+check_and_install_dependencies()
 
 # Сторонние зависимости 
 import click
