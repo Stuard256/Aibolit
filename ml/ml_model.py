@@ -46,22 +46,8 @@ class AnimalDiseaseClassifier:
             
         except ImportError:
             print("Ошибка: Не удалось импортировать advanced_veterinary_dataset.py")
-            print("Пробуем базовый датасет...")
-            try:
-                from real_veterinary_dataset import RealVeterinaryDataset
-                real_dataset = RealVeterinaryDataset()
-                df = real_dataset.create_realistic_dataset(n_samples=5000)
-                
-                # Извлекаем симптомы и заболевания
-                self.symptoms = real_dataset.symptoms
-                self.diseases = real_dataset.diseases
-                
-                return df
-                
-            except ImportError:
-                print("Ошибка: Не удалось импортировать real_veterinary_dataset.py")
-                print("Создаем базовый датасет...")
-                return self._create_basic_dataset()
+            print("Создаем базовый датасет...")
+            return self._create_basic_dataset()
     
     def _create_basic_dataset(self):
         """Создание базового датасета если реальный недоступен"""

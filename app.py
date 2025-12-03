@@ -227,11 +227,12 @@ def update_appointment_treatments(appointment_id):
             )
             db.session.add(at)
         
-        db.session.commit()
-        
-        # Создаем вакцинации для вакцин
+        # Создаем вакцинации для вакцин (до commit)
         appointment = Appointment.query.get(appointment_id)
         create_vaccinations_for_appointment(appointment)
+        
+        # Коммитим все изменения вместе (treatments + vaccinations)
+        db.session.commit()
         
         return jsonify({'success': True})
     except Exception as e:
@@ -444,15 +445,15 @@ def treatment_calculator():
                     )
                     db.session.add(at)
 
-                # Фиксируем изменения перед созданием вакцинаций
-                db.session.commit()
-
-                # Автоматическое создание вакцинаций
+                # Автоматическое создание вакцинаций (до commit)
                 if any(t['category'] == 'vaccines' for t in treatments):
                     try:
                         create_vaccinations_for_appointment(appointment)
                     except Exception as vaccine_error:
                         flash('Ошибка при создании вакцинаций: {}'.format(str(vaccine_error)), 'warning')
+
+                # Коммитим все изменения вместе (appointment + treatments + vaccinations)
+                db.session.commit()
 
                 flash('Назначения успешно сохранены', 'success')
                 return redirect(url_for('appointment_details', appointment_id=appointment.id))
@@ -515,7 +516,7 @@ def create_vaccinations_for_appointment(appointment):
                 )
                 db.session.add(vaccination)
         
-        db.session.commit()
+        # Не делаем commit здесь - пусть вызывающий код управляет транзакцией
     except Exception as e:
         db.session.rollback()
         raise e
