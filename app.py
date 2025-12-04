@@ -1955,8 +1955,10 @@ def search_owners():
     if not search_term:
         return jsonify([])
     
+    # Преобразуем поисковый запрос к верхнему регистру для сравнения, так как в БД имена хранятся в верхнем регистре
+    # Используем func.upper() для надежного регистронезависимого поиска
     owners = Owner.query.filter(
-        Owner.name.ilike('%{}%'.format(search_term))
+        db.func.upper(Owner.name).like('%{}%'.format(search_term.upper()))
     ).limit(10).all()
     
     return jsonify([{'id': o.id, 'text': o.name} for o in owners])
@@ -2044,9 +2046,11 @@ def search_owners_for_transfer():
         return jsonify([])
     
     # Ищем по имени, телефону или адресу с более подробной информацией
+    # Для имени используем func.upper() так как в БД имена хранятся в верхнем регистре
+    query_upper = query.upper()
     owners = Owner.query.filter(
         db.or_(
-            Owner.name.ilike('%{}%'.format(query)),
+            db.func.upper(Owner.name).like('%{}%'.format(query_upper)),
             Owner.phone.ilike('%{}%'.format(query)),
             Owner.address.ilike('%{}%'.format(query))
         )
@@ -2137,7 +2141,7 @@ def owners_list():
     per_page = 10
 
     search_name = request.args.get('search_name', '').strip().upper()
-    search_pet = request.args.get('search_pet', '').strip().upper()
+    search_pet = request.args.get('search_pet', '').strip()
     search_card = request.args.get('search_card', '').strip()
     search_phone = request.args.get('search_phone', '').strip()
     search_address = request.args.get('search_address', '').strip().upper()
@@ -2164,7 +2168,7 @@ def owners_list():
         query = query.filter(db.and_(*conditions))
     
     if search_pet:
-        query = query.filter(Pet.name.contains(search_pet))
+        query = query.filter(Pet.name.ilike('%{}%'.format(search_pet)))
     if search_card:
         query = query.filter(Pet.card_number == search_card)
     if search_phone:
