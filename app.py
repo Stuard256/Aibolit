@@ -826,12 +826,19 @@ def list_treatments():
 @app.route('/generate_report', methods=['POST'])
 def generate_report():
     report_type = request.form.get('report_type')
-    start_date = datetime.strptime(request.form.get('start_date'), '%Y-%m-%d') 
-    end_date = datetime.strptime(request.form.get('end_date'), '%Y-%m-%d')
-
-    previous_day = start_date - timedelta(days=1)
     
     if report_type == 'rabies':
+        # Получаем даты только для отчёта по бешенству
+        start_date_str = request.form.get('start_date')
+        end_date_str = request.form.get('end_date')
+        
+        if not start_date_str or not end_date_str:
+            flash('Необходимо указать даты начала и окончания периода', 'error')
+            return redirect(url_for('vaccinations'))
+        
+        start_date = datetime.strptime(start_date_str, '%Y-%m-%d') 
+        end_date = datetime.strptime(end_date_str, '%Y-%m-%d')
+        previous_day = start_date - timedelta(days=1)
         # Получаем вакцинации от бешенства за период
         vaccinations = db.session.query(Vaccination, Owner, Pet)\
             .join(Owner, Vaccination.owner_id == Owner.id)\

@@ -127,6 +127,7 @@
             </div>
             <form method="post" action="{{ url_for('generate_report') }}">
                 <div class="modal-body">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="mb-3">
                         <label for="start_date" class="form-label">Дата начала</label>
                         <input type="date" class="form-control" id="start_date" name="start_date" required>
@@ -165,6 +166,7 @@
             </div>
             <form method="post" action="{{ url_for('generate_report') }}">
                 <div class="modal-body">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="alert alert-warning">
                         <i class="bi bi-exclamation-triangle"></i>
                         <strong>Внимание:</strong> Будет создан ZIP-архив с контактными данными владельцев
