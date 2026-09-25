@@ -444,17 +444,45 @@ def available_card_numbers():
 def edit_treatment(treatment_id):
     treatment = Treatment.query.get_or_404(treatment_id)
     form = TreatmentForm(obj=treatment)
-    
+
+    # Проставляем чекбоксы типов вакцин из JSON-поля модели
+    if request.method == 'GET' and treatment.category == 'vaccines' and treatment.vaccine_types:
+        form.rabies_vaccine.data = 'Бешенство' in treatment.vaccine_types
+        form.viral_vaccine.data = 'Вирусные' in treatment.vaccine_types
+        form.fungal_vaccine.data = 'Грибковые' in treatment.vaccine_types
+
     if form.validate_on_submit():
         try:
-            form.populate_obj(treatment)
+            # Явно обновляем только поля модели (не Boolean/Submit из формы)
+            treatment.name = form.name.data
+            treatment.category = form.category.data
+            treatment.dosage = form.dosage.data
+            treatment.unit = form.unit.data
+            treatment.price = form.price.data
+            treatment.description = form.description.data
+
+            if form.category.data == 'vaccines':
+                vaccine_types = []
+                if form.rabies_vaccine.data:
+                    vaccine_types.append('Бешенство')
+                if form.viral_vaccine.data:
+                    vaccine_types.append('Вирусные')
+                if form.fungal_vaccine.data:
+                    vaccine_types.append('Грибковые')
+                treatment.vaccine_types = vaccine_types or None
+            else:
+                treatment.vaccine_types = None
+
             db.session.commit()
             flash('Назначение успешно обновлено!', 'success')
             return redirect(url_for('list_treatments'))
         except Exception as e:
             db.session.rollback()
             flash('Ошибка при обновлении назначения: {}'.format(str(e)), 'danger')
-    
+    elif request.method == 'POST':
+        # Чтобы было видно, почему цена/поля не сохранились
+        flash('Не удалось сохранить назначение: проверьте заполнение полей.', 'warning')
+
     return render_template('edit_treatment.html', form=form, treatment=treatment)
 
 

@@ -1,11 +1,6 @@
 from flask_wtf import FlaskForm
 from wtforms import StringField, FloatField, SelectField, SubmitField, TextAreaField, BooleanField
-from wtforms.validators import DataRequired, NumberRange, ValidationError
-
-def validate_vaccine_types(form, field):
-    if form.category.data == 'vaccines':
-        if not any([form.rabies_vaccine.data, form.viral_vaccine.data, form.fungal_vaccine.data]):
-            raise ValidationError('Выберите хотя бы один тип вакцины')
+from wtforms.validators import DataRequired, NumberRange
 
 
 class TreatmentCalculatorForm(FlaskForm):
@@ -13,6 +8,7 @@ class TreatmentCalculatorForm(FlaskForm):
     quantity = FloatField('Количество', validators=[DataRequired(), NumberRange(min=0.1)])
     add_another = SubmitField('Добавить ещё')
     save_to_pet = SubmitField('Сохранить в карточку')
+
 
 class TreatmentForm(FlaskForm):
     name = StringField('Название назначения', validators=[DataRequired()])
@@ -45,4 +41,15 @@ class TreatmentForm(FlaskForm):
     viral_vaccine = BooleanField('Вирусные')
     fungal_vaccine = BooleanField('Грибковые')
     description = TextAreaField('Описание')
-    submit = SubmitField('Добавить назначение', validators=[validate_vaccine_types])
+    # Валидатор типов вакцин — на уровне формы, а не SubmitField:
+    # иначе при редактировании (кнопка без name=submit) сохранение тихо падает.
+    submit = SubmitField('Добавить назначение')
+
+    def validate(self, extra_validators=None):
+        if not super().validate(extra_validators=extra_validators):
+            return False
+        if self.category.data == 'vaccines':
+            if not any([self.rabies_vaccine.data, self.viral_vaccine.data, self.fungal_vaccine.data]):
+                self.category.errors.append('Выберите хотя бы один тип вакцины')
+                return False
+        return True
